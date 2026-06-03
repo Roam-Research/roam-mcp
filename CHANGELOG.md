@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0 - 2026-06-03
+
+- Added a new tool **`append_to_daily_note`** — a quick-capture tool for adding markdown to a daily
+  note (todos, notes, summaries). Defaults to today's daily note (also accepts a `date`: `MM-DD-YYYY`
+  or `today`/`yesterday`/`tomorrow`), creates the page if needed, and optionally appends under an
+  existing top-level section via `nestUnder`. It is a thin wrapper over the same
+  `data.block.fromMarkdown` action `create_block` already uses — no new backend action — added for
+  discoverability and as a narrow, append-only capture surface.
+
 ## 0.6.8 - 2026-06-03
 
 - `create_block`'s `dailyNotePage` now accepts the relative words **`today`**, **`yesterday`**, and

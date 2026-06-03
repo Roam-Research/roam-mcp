@@ -40,6 +40,26 @@ export const CreateBlockSchema = z.object({
     .describe("Position (number, 'first', or 'last'). Defaults to 'last'"),
 });
 
+export const AppendToDailyNoteSchema = z.object({
+  markdown: z.string().describe("Markdown to append as one or more new blocks."),
+  nestUnder: z
+    .string()
+    .optional()
+    .describe(
+      "Optional: add beneath an existing top-level section block on the daily note (e.g. 'TODOs'), matched by exact text (including markup like [[links]]); created if absent. Omit to append at the page's top level.",
+    ),
+  date: z
+    .string()
+    .refine((v) => MM_DD_YYYY.test(v) || isRelativeDateWord(v), {
+      message:
+        "Must be MM-DD-YYYY format (e.g. '03-17-2026') or a relative day: 'today', 'yesterday', or 'tomorrow'",
+    })
+    .optional()
+    .describe(
+      "Which daily note to append to: a date in MM-DD-YYYY format, or a relative day 'today'/'yesterday'/'tomorrow' (case-insensitive; resolved to the user's local calendar date). Defaults to today.",
+    ),
+});
+
 export const GetBlockSchema = z.object({
   uid: z.string().describe("Block UID"),
   maxDepth: z.coerce
@@ -103,6 +123,7 @@ export const GetBacklinksSchema = z.object({
 
 // Types derived from schemas
 export type CreateBlockParams = z.infer<typeof CreateBlockSchema>;
+export type AppendToDailyNoteParams = z.infer<typeof AppendToDailyNoteSchema>;
 export type GetBlockParams = z.infer<typeof GetBlockSchema>;
 export type UpdateBlockParams = z.infer<typeof UpdateBlockSchema>;
 export type DeleteBlockParams = z.infer<typeof DeleteBlockSchema>;
@@ -164,6 +185,29 @@ export async function createBlock(
   } else {
     location["page-title"] = params.pageTitle;
   }
+  if (params.nestUnder !== undefined) {
+    location["nest-under-str"] = params.nestUnder;
+  }
+
+  const response = await client.call<{ uids: string[] }>("data.block.fromMarkdown", [
+    { location, "markdown-string": params.markdown },
+  ]);
+  return textResult(response.result ?? { uids: [] });
+}
+
+export async function appendToDailyNote(
+  client: RoamActionClient,
+  params: AppendToDailyNoteParams,
+): Promise<CallToolResult> {
+  // Capture wrapper over create_block's daily-note path: resolve the target day
+  // (relative words against the transport's "today"; defaults to today) and append
+  // via data.block.fromMarkdown — nestUnder finds-or-creates the section.
+  const resolvedDailyNote = resolveDailyNotePage(params.date ?? "today", client.getCurrentDate?.());
+
+  const location: Record<string, unknown> = {
+    order: "last",
+    "page-title": { "daily-note-page": resolvedDailyNote },
+  };
   if (params.nestUnder !== undefined) {
     location["nest-under-str"] = params.nestUnder;
   }

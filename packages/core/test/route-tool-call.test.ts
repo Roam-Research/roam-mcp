@@ -158,3 +158,38 @@ describe("routeToolCall — create_block relative dailyNotePage", () => {
     expect(body.location["page-title"]).toEqual({ "daily-note-page": "03-17-2026" });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Test F — append_to_daily_note defaults to today and maps nestUnder/order
+// ---------------------------------------------------------------------------
+// With no `date`, it targets today's daily note (resolved via getCurrentDate),
+// appends at the end, and routes `nestUnder` to the backend's nest-under-str —
+// all through the same data.block.fromMarkdown action create_block uses.
+describe("routeToolCall — append_to_daily_note", () => {
+  it("defaults the date to today and maps nestUnder/order", async () => {
+    const callSpy = vi.fn().mockResolvedValue({ success: true, result: { uids: ["abc"] } });
+
+    const result = await routeToolCall(
+      "append_to_daily_note",
+      { markdown: "buy milk", nestUnder: "TODOs", graph: "test" },
+      {
+        resolveGraph: async () => ({ name: "test-graph", type: "hosted", nickname: "test" }),
+        createClient: () => ({ call: callSpy, getCurrentDate: () => "2026-03-17" }),
+        tokenInfoMode: "skip",
+      },
+    );
+
+    expect(result.isError).toBeFalsy();
+    expect(callSpy).toHaveBeenCalledTimes(1);
+    const [action, args] = callSpy.mock.calls[0];
+    expect(action).toBe("data.block.fromMarkdown");
+    const body = (args as unknown[])[0] as {
+      location: Record<string, unknown>;
+      "markdown-string": string;
+    };
+    expect(body.location["page-title"]).toEqual({ "daily-note-page": "03-17-2026" });
+    expect(body.location["nest-under-str"]).toBe("TODOs");
+    expect(body.location.order).toBe("last");
+    expect(body["markdown-string"]).toBe("buy milk");
+  });
+});

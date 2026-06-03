@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { dataTools, findTool, stripUndeclaredStructuredContent } from "../src/tools.js";
 import { textResult } from "../src/types.js";
 
-// Output schemas are WRITE-ONLY: the 8 write tools declare a schema (the SDK
+// Output schemas are WRITE-ONLY: the 9 write tools declare a schema (the SDK
 // validates structuredContent against it on success); the 9 read tools are
 // content-only. These tests pin that split, the additive textResult
 // structuredContent path, and representative write payloads. (Why write-only +
@@ -11,6 +11,7 @@ import { textResult } from "../src/types.js";
 const WRITE_TOOLS = [
   "create_page",
   "create_block",
+  "append_to_daily_note",
   "update_block",
   "delete_block",
   "move_block",
@@ -20,8 +21,8 @@ const WRITE_TOOLS = [
 ];
 
 describe("output schemas are declared on write tools only", () => {
-  it("the 8 write tools declare an outputSchema, the 9 reads do not", () => {
-    expect(dataTools.length).toBe(17);
+  it("the 9 write tools declare an outputSchema, the 9 reads do not", () => {
+    expect(dataTools.length).toBe(18);
     const withSchema = dataTools
       .filter((t) => t.outputSchema)
       .map((t) => t.name)

@@ -29,7 +29,7 @@ describe("tool annotations — representative tools per category", () => {
   });
 
   it("appends are writes but not destructive", () => {
-    for (const name of ["create_block", "create_page", "add_comment"]) {
+    for (const name of ["create_block", "append_to_daily_note", "create_page", "add_comment"]) {
       const a = annotationsFor(name);
       expect(a?.readOnlyHint, name).toBe(false);
       expect(a?.destructiveHint, name).toBe(false);

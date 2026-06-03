@@ -1,6 +1,6 @@
 {
   "name": "@roam-research/roam-mcp",
-  "version": "0.6.8",
+  "version": "0.7.0",
   "description": "Official MCP server for Roam Research — connect Claude and other AI assistants to your graph",
   "repository": {
     "type": "git",
@@ -37,6 +37,6 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": ">=1.26.0 <2.0.0",
-    "@roam-research/roam-tools-local": "0.6.8"
+    "@roam-research/roam-tools-local": "0.7.0"
   }
 }

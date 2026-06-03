@@ -23,6 +23,7 @@ import {
 } from "./operations/pages.js";
 import {
   CreateBlockSchema,
+  AppendToDailyNoteSchema,
   GetBlockSchema,
   UpdateBlockSchema,
   DeleteBlockSchema,
@@ -31,6 +32,7 @@ import {
   AddCommentSchema,
   GetCommentsSchema,
   createBlock,
+  appendToDailyNote,
   getBlock,
   updateBlock,
   deleteBlock,
@@ -224,7 +226,7 @@ const UPLOAD: ToolAnnotations = { ...APPEND, openWorldHint: true };
 
 // ----------------------------------------------------------------------------
 // Output schemas (MCP tools/list structured-result hints) — WRITE TOOLS ONLY.
-// The 8 write tools declare a schema (and emit structuredContent); the 9 read
+// The 9 write tools declare a schema (and emit structuredContent); the 9 read
 // tools are content-only. Why write-only:
 //   - structuredContent duplicates the whole result into the text channel
 //     (textResult already JSON-stringifies it), so a schema on big reads
@@ -274,6 +276,14 @@ export const dataTools: ClientToolDefinition[] = [
     CreateBlockSchema,
     createBlock,
     { title: "Create blocks", annotations: APPEND, outputSchema: UidsOutput },
+  ),
+  defineTool(
+    "append_to_daily_note",
+    "Append (capture) markdown to a daily note — the tool for quick capture into Roam: todos, notes, meeting summaries, AI outputs. Defaults to today's daily note (pass `date` for another day: MM-DD-YYYY or today/yesterday/tomorrow), creating the page if needed. Optionally nestUnder an existing top-level section (e.g. 'TODOs'), matched by exact text and created if absent. Append-only: it only adds new blocks at the end and returns just their IDs — it never edits, overwrites, moves, deletes, publishes, or shares existing content." +
+      GUIDELINES_NOTE,
+    AppendToDailyNoteSchema,
+    appendToDailyNote,
+    { title: "Append to daily note", annotations: APPEND, outputSchema: UidsOutput },
   ),
   defineTool(
     "update_block",
