@@ -97,5 +97,7 @@ describe("routeToolCall — get_graph_guidelines with tokenInfoMode: 'skip'", ()
     const text = (result.content[0] as { text: string }).text;
     expect(text.startsWith("Roam graph: test")).toBe(true);
     expect(text).toContain("do nice things");
+    // The built-in roam-syntax guide is appended to every get_graph_guidelines response.
+    expect(text).toContain("Use the graph");
   });
 });

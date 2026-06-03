@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `get_graph_guidelines` now returns a `roamSyntax` field: a compact,
+  graph-agnostic guide to writing structured Roam (links, nesting, attributes,
+  queries, components, and where to find more) so agents write correctly before
+  their first edit. Independent of the user's `[[roam/agent guidelines]]` page.
+
 ## 0.6.5 - 2026-05-26
 
 - Published all four workspace packages together for the first time:

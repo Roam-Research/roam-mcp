@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { CallToolResult, GetPageResponse, RoamActionClient } from "../types.js";
 import { textResult } from "../types.js";
+import { ROAM_SYNTAX } from "../roam-syntax.js";
 
 // Schemas
 export const CreatePageSchema = z.object({
@@ -129,5 +130,6 @@ export async function getGuidelines(client: RoamActionClient): Promise<CallToolR
   return textResult({
     ...result,
     nextSteps,
+    roamSyntax: ROAM_SYNTAX,
   });
 }

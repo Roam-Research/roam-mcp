@@ -151,6 +151,8 @@ To create a token manually: Roam Desktop → Settings → Graph → Local API To
 
 Graph guidelines let you store preferences and context directly in your Roam graph that AI agents will follow. Create a page called `[[roam/agent guidelines]]` with your instructions. These might include naming conventions, preferred page structures, topics to focus on, or any other context that should guide how the AI interacts with your graph.
 
+`get_graph_guidelines` also returns a `roamSyntax` field — a built-in, graph-agnostic guide to writing structured Roam (links, nesting, attributes, queries, components) instead of flat text. It is independent of your `[[roam/agent guidelines]]` page, so agents write sensible Roam even when no guidelines page exists yet.
+
 **Content:**
 
 - `create_page` - Create page with markdown content
@@ -185,6 +187,14 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 - `file_get` - Fetch a file hosted on Roam (handles decryption for encrypted graphs)
 - `file_upload` - Upload a file to Roam (from local path, URL, or base64)
 - `file_delete` - Delete a file hosted on Roam
+
+## Skills
+
+This repo also ships an Agent Skill, **`roam-syntax`** — a graph-agnostic reference for writing Roam content correctly (escaping live markup, refs, blocks, queries, components, attributes, conventions). It needs no MCP or CLI; pull just the skill folder into your agent's skills directory:
+
+```bash
+npx degit Roam-Research/roam-tools/skills/roam-syntax ~/.claude/skills/roam-syntax
+```
 
 ## CLI
 

@@ -140,7 +140,7 @@ const GUIDELINES_NOTE =
 export const dataTools: ClientToolDefinition[] = [
   defineTool(
     "get_graph_guidelines",
-    "Returns this graph's agent-facing setup: naming conventions, structural preferences, orientation actions, and any constraints the user has explicitly recorded for AI agents. Call once per graph per session before reading or writing content — skipping it means operating on assumptions the user has already overridden, so your work will likely need to be redone. The `nextSteps` field in the response lists orientation actions to take before proceeding.",
+    "Returns this graph's agent-facing setup: naming conventions, structural preferences, orientation actions, and any constraints the user has explicitly recorded for AI agents. Call once per graph per session before reading or writing content — skipping it means operating on assumptions the user has already overridden, so your work will likely need to be redone. The `nextSteps` field in the response lists orientation actions to take before proceeding. The `roamSyntax` field is a compact, graph-agnostic guide to writing Roam content correctly — read it before your first write.",
     GetGuidelinesSchema,
     getGuidelines,
   ),
