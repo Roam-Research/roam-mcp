@@ -129,3 +129,32 @@ describe("routeToolCall — get_page / get_block not-found", () => {
     },
   );
 });
+
+// ---------------------------------------------------------------------------
+// Test E — create_block resolves a relative dailyNotePage via getCurrentDate
+// ---------------------------------------------------------------------------
+// Proves the seam: a relative word ("today") is resolved to a concrete
+// MM-DD-YYYY using the transport's getCurrentDate(), and the backend sees only
+// the resolved date on the wire.
+describe("routeToolCall — create_block relative dailyNotePage", () => {
+  it("resolves 'today' to MM-DD-YYYY using client.getCurrentDate", async () => {
+    const callSpy = vi.fn().mockResolvedValue({ success: true, result: { uids: ["abc"] } });
+
+    const result = await routeToolCall(
+      "create_block",
+      { dailyNotePage: "today", markdown: "hello", graph: "test" },
+      {
+        resolveGraph: async () => ({ name: "test-graph", type: "hosted", nickname: "test" }),
+        createClient: () => ({ call: callSpy, getCurrentDate: () => "2026-03-17" }),
+        tokenInfoMode: "skip",
+      },
+    );
+
+    expect(result.isError).toBeFalsy();
+    expect(callSpy).toHaveBeenCalledTimes(1);
+    const [action, args] = callSpy.mock.calls[0];
+    expect(action).toBe("data.block.fromMarkdown");
+    const body = (args as unknown[])[0] as { location: Record<string, unknown> };
+    expect(body.location["page-title"]).toEqual({ "daily-note-page": "03-17-2026" });
+  });
+});

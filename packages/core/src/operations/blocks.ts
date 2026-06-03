@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { CallToolResult, GetBlockResponse, RoamActionClient } from "../types.js";
 import { textResult, RoamError, ErrorCodes } from "../types.js";
+import { isRelativeDateWord, MM_DD_YYYY, resolveDailyNotePage } from "../relative-date.js";
 
 // Schemas
 export const CreateBlockSchema = z.object({
@@ -18,10 +19,13 @@ export const CreateBlockSchema = z.object({
     ),
   dailyNotePage: z
     .string()
-    .regex(/^\d{2}-\d{2}-\d{4}$/, "Must be MM-DD-YYYY format (e.g. '03-17-2026')")
+    .refine((v) => MM_DD_YYYY.test(v) || isRelativeDateWord(v), {
+      message:
+        "Must be MM-DD-YYYY format (e.g. '03-17-2026') or a relative day: 'today', 'yesterday', or 'tomorrow'",
+    })
     .optional()
     .describe(
-      "Daily note date in MM-DD-YYYY format (e.g. '03-17-2026'). Targets that day's daily note page, creating it if needed. Exactly one of parentUid, pageTitle, or dailyNotePage is required.",
+      "Target a daily note page, creating it if needed. Either a date in MM-DD-YYYY format (e.g. '03-17-2026') or a relative day: 'today', 'yesterday', or 'tomorrow' (case-insensitive; resolved to the user's local calendar date). Exactly one of parentUid, pageTitle, or dailyNotePage is required.",
     ),
   nestUnder: z
     .string()
@@ -140,13 +144,23 @@ export async function createBlock(
     );
   }
 
+  // Resolve a relative dailyNotePage ("today"/"yesterday"/"tomorrow") to a
+  // concrete MM-DD-YYYY before it goes on the wire, against the transport's
+  // notion of "today" (remote: picker timezone; local: machine clock). A
+  // literal MM-DD-YYYY passes through unchanged, so the backend/renderer see no
+  // new vocabulary.
+  const resolvedDailyNote =
+    params.dailyNotePage !== undefined
+      ? resolveDailyNotePage(params.dailyNotePage, client.getCurrentDate?.())
+      : undefined;
+
   const location: Record<string, unknown> = {
     order: params.order ?? "last",
   };
   if (params.parentUid !== undefined) {
     location["parent-uid"] = params.parentUid;
-  } else if (params.dailyNotePage !== undefined) {
-    location["page-title"] = { "daily-note-page": params.dailyNotePage };
+  } else if (resolvedDailyNote !== undefined) {
+    location["page-title"] = { "daily-note-page": resolvedDailyNote };
   } else {
     location["page-title"] = params.pageTitle;
   }

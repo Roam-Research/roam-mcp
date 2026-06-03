@@ -66,7 +66,7 @@ interface RoamActionClient {
 interface ToolGraph {
   name: string; // canonical graph name (the transport uses this to address the graph)
   type: GraphType; // "hosted" | "offline"
-  nickname: string; // local-sync token-status update key (the result prefix now uses the graph name)
+  nickname: string; // local-sync token-status update key (the result's `graph` field uses the graph name, not this)
   accessLevel?: AccessLevel; // "read-only" | "read-append" | "full"
   token?: string; // local-only; a hosted resolver omits it
 }
@@ -161,15 +161,15 @@ That caret is the crux of §6: anything we ship in a `0.6.x` patch reaches the h
 
 Real, intentional differences. Keep them in mind when reasoning about behavior or writing copy.
 
-| Aspect                      | Local (`roam-tools-local`)             | Hosted (separate repo)                      | Core's stance                                                                                                                                                                            |
-| --------------------------- | -------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **nickname**                | **Required** (kebab-case schema field) | **Optional** (falls back to the graph name) | local-sync passes it to `onTokenStatusUpdate` (token-status key); hosted resolvers set it to the graph name when absent. The result prefix now uses the graph **name**, not the nickname |
-| **`graph` param**           | accepts nickname **or** name           | accepts nickname **or** name                | the param is the same string either way                                                                                                                                                  |
-| **resolution lookup order** | nickname → name                        | name → nickname                             | core doesn't resolve; the injected `resolveGraph` does                                                                                                                                   |
-| **`tokenInfoMode` default** | `"local-sync"` (local wrapper sets it) | `"skip"`                                    | core's own default is `"skip"`                                                                                                                                                           |
-| **`getTokenInfo`**          | implemented (`RoamClient`)             | not implemented                             | optional on the interface                                                                                                                                                                |
-| **standalone tools**        | `graphManagementTools` (2)             | authors its own                             | core has none                                                                                                                                                                            |
-| **error codes**             | emits a subset of `ErrorCodes`         | passes its backend's codes through verbatim | `RoamError.code` accepts arbitrary strings since 0.6.2                                                                                                                                   |
+| Aspect                      | Local (`roam-tools-local`)             | Hosted (separate repo)                      | Core's stance                                                                                                                                                                                    |
+| --------------------------- | -------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **nickname**                | **Required** (kebab-case schema field) | **Optional** (falls back to the graph name) | local-sync passes it to `onTokenStatusUpdate` (token-status key); hosted resolvers set it to the graph name when absent. The result's `graph` field carries the graph **name**, not the nickname |
+| **`graph` param**           | accepts nickname **or** name           | accepts nickname **or** name                | the param is the same string either way                                                                                                                                                          |
+| **resolution lookup order** | nickname → name                        | name → nickname                             | core doesn't resolve; the injected `resolveGraph` does                                                                                                                                           |
+| **`tokenInfoMode` default** | `"local-sync"` (local wrapper sets it) | `"skip"`                                    | core's own default is `"skip"`                                                                                                                                                                   |
+| **`getTokenInfo`**          | implemented (`RoamClient`)             | not implemented                             | optional on the interface                                                                                                                                                                        |
+| **standalone tools**        | `graphManagementTools` (2)             | authors its own                             | core has none                                                                                                                                                                                    |
+| **error codes**             | emits a subset of `ErrorCodes`         | passes its backend's codes through verbatim | `RoamError.code` accepts arbitrary strings since 0.6.2                                                                                                                                           |
 
 ---
 

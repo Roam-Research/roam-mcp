@@ -421,4 +421,11 @@ export type TokenInfoResult =
 export interface RoamActionClient {
   call<T = unknown>(action: string, args?: unknown[]): Promise<RoamResponse<T>>;
   getTokenInfo?(): Promise<TokenInfoResult>;
+  // Transport's notion of the user's "today" as a yyyy-MM-dd calendar string.
+  // Remote returns the picker-timezone date; local returns the machine-local
+  // date. Used by createBlock to resolve relative dailyNotePage words. Optional
+  // for interface back-compat, but ALL first-party transports implement it —
+  // core throws (it never guesses with its own clock) if a relative
+  // dailyNotePage word arrives without one.
+  getCurrentDate?(): string | undefined;
 }
