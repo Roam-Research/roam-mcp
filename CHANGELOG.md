@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.8 - 2026-06-03
+
+- `create_block`'s `dailyNotePage` now accepts the relative words **`today`**, **`yesterday`**, and
+  **`tomorrow`** (case-insensitive) in addition to `MM-DD-YYYY`. They are resolved to a concrete
+  `MM-DD-YYYY` **before the value crosses the wire** — against each transport's notion of "today"
+  (local: the machine clock; hosted: the user's picker timezone) — so the backend and renderer see no
+  new vocabulary and there is no version coupling. A literal `MM-DD-YYYY` passes through unchanged.
+- Added an optional `getCurrentDate?(): string | undefined` to the `RoamActionClient` interface (the
+  transport's `yyyy-MM-dd` "today"). The local `RoamClient` implements it from the machine clock;
+  core throws rather than silently falling back to its own (UTC) clock if a relative word arrives
+  without a base date.
+
 ## 0.6.7 - 2026-06-02
 
 - Added **structured tool output on the 8 write tools** (`create_page`, `create_block`,
