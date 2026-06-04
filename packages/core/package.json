@@ -1,6 +1,6 @@
 {
   "name": "@roam-research/roam-tools-core",
-  "version": "0.6.5",
+  "version": "0.7.0",
   "description": "Official transport-agnostic core for Roam Research MCP and CLI tools",
   "repository": {
     "type": "git",
@@ -32,7 +32,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": ">=1.26.0 <2.0.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

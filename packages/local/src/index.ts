@@ -75,6 +75,7 @@ export {
   dataTools,
   desktopUiTools,
   contentTools,
+  stripUndeclaredStructuredContent,
   // NOTE: tools, findTool, routeToolCall are intentionally NOT re-exported from
   // core — local shadows them with versions that include graphManagementTools
   // and bake in local defaults.

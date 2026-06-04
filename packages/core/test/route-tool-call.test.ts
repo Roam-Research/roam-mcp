@@ -34,6 +34,8 @@ describe("routeToolCall — injection contract", () => {
                   uid: "abc",
                   markdown: "fake markdown content",
                   queriedAt: "2026-01-01T00:00:00Z",
+                  // a backend-provided `graph` must NOT win over the canonical resolved name
+                  graph: "spoofed",
                 },
               };
             },
@@ -50,7 +52,8 @@ describe("routeToolCall — injection contract", () => {
     const first = result.content[0];
     expect(first.type).toBe("text");
     const text = (first as { text: string }).text;
-    expect(text.startsWith("Roam graph: test")).toBe(true);
+    // canonical resolved name wins over the backend's `graph: "spoofed"`
+    expect(JSON.parse(text).graph).toBe("test-graph");
     expect(text).toContain("fake markdown content");
   });
 });
@@ -92,10 +95,101 @@ describe("routeToolCall — get_graph_guidelines with tokenInfoMode: 'skip'", ()
     // Side flow was skipped
     expect(getTokenInfoSpy).not.toHaveBeenCalled();
     expect(onTokenStatusUpdate).not.toHaveBeenCalled();
-    // Graph-name prefix still applies (documented behavior)
+    // graph field still applies (documented behavior)
     expect(result.isError).toBeFalsy();
     const text = (result.content[0] as { text: string }).text;
-    expect(text.startsWith("Roam graph: test")).toBe(true);
+    expect(JSON.parse(text).graph).toBe("test-graph");
     expect(text).toContain("do nice things");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test D — get_page / get_block treat an empty/uid-less result as not-found
+// ---------------------------------------------------------------------------
+// A miss must yield { found: false } even when the backend returns `{}` (not just
+// null/undefined) — a found page/block always carries a `uid`.
+describe("routeToolCall — get_page / get_block not-found", () => {
+  it.each(["get_page", "get_block"])(
+    "%s returns { found: false } for an empty result",
+    async (tool) => {
+      const result = await routeToolCall(
+        tool,
+        { uid: "missing", graph: "test" },
+        {
+          resolveGraph: async () => ({ name: "test-graph", type: "hosted", nickname: "test" }),
+          createClient: () => ({ call: async () => ({ success: true, result: {} }) }),
+          tokenInfoMode: "skip",
+        },
+      );
+
+      expect(result.isError).toBeFalsy();
+      const parsed = JSON.parse((result.content[0] as { text: string }).text);
+      expect(parsed.found).toBe(false);
+      expect(parsed.uid).toBeUndefined();
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Test E — create_block resolves a relative dailyNotePage via getCurrentDate
+// ---------------------------------------------------------------------------
+// Proves the seam: a relative word ("today") is resolved to a concrete
+// MM-DD-YYYY using the transport's getCurrentDate(), and the backend sees only
+// the resolved date on the wire.
+describe("routeToolCall — create_block relative dailyNotePage", () => {
+  it("resolves 'today' to MM-DD-YYYY using client.getCurrentDate", async () => {
+    const callSpy = vi.fn().mockResolvedValue({ success: true, result: { uids: ["abc"] } });
+
+    const result = await routeToolCall(
+      "create_block",
+      { dailyNotePage: "today", markdown: "hello", graph: "test" },
+      {
+        resolveGraph: async () => ({ name: "test-graph", type: "hosted", nickname: "test" }),
+        createClient: () => ({ call: callSpy, getCurrentDate: () => "2026-03-17" }),
+        tokenInfoMode: "skip",
+      },
+    );
+
+    expect(result.isError).toBeFalsy();
+    expect(callSpy).toHaveBeenCalledTimes(1);
+    const [action, args] = callSpy.mock.calls[0];
+    expect(action).toBe("data.block.fromMarkdown");
+    const body = (args as unknown[])[0] as { location: Record<string, unknown> };
+    expect(body.location["page-title"]).toEqual({ "daily-note-page": "03-17-2026" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test F — append_to_daily_note defaults to today and maps nestUnder/order
+// ---------------------------------------------------------------------------
+// With no `date`, it targets today's daily note (resolved via getCurrentDate),
+// appends at the end, and routes `nestUnder` to the backend's nest-under-str —
+// all through the same data.block.fromMarkdown action create_block uses.
+describe("routeToolCall — append_to_daily_note", () => {
+  it("defaults the date to today and maps nestUnder/order", async () => {
+    const callSpy = vi.fn().mockResolvedValue({ success: true, result: { uids: ["abc"] } });
+
+    const result = await routeToolCall(
+      "append_to_daily_note",
+      { markdown: "buy milk", nestUnder: "TODOs", graph: "test" },
+      {
+        resolveGraph: async () => ({ name: "test-graph", type: "hosted", nickname: "test" }),
+        createClient: () => ({ call: callSpy, getCurrentDate: () => "2026-03-17" }),
+        tokenInfoMode: "skip",
+      },
+    );
+
+    expect(result.isError).toBeFalsy();
+    expect(callSpy).toHaveBeenCalledTimes(1);
+    const [action, args] = callSpy.mock.calls[0];
+    expect(action).toBe("data.block.fromMarkdown");
+    const body = (args as unknown[])[0] as {
+      location: Record<string, unknown>;
+      "markdown-string": string;
+    };
+    expect(body.location["page-title"]).toEqual({ "daily-note-page": "03-17-2026" });
+    expect(body.location["nest-under-str"]).toBe("TODOs");
+    expect(body.location.order).toBe("last");
+    expect(body["markdown-string"]).toBe("buy milk");
   });
 });

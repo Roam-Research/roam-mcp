@@ -16,6 +16,7 @@ import {
   getErrorMessage,
   RoamError,
   ErrorCodes,
+  localTodayString,
 } from "@roam-research/roam-tools-core";
 import type { RoamClientConfig } from "./types.js";
 
@@ -267,6 +268,16 @@ export class RoamClient {
     } catch {
       return { status: "unknown" };
     }
+  }
+
+  /**
+   * The machine's local calendar date (yyyy-MM-dd). The npx process shares the
+   * user's clock with the renderer, so machine-local time is the correct
+   * "today" for the local transport. Core uses it to resolve relative
+   * dailyNotePage words (today/yesterday/tomorrow).
+   */
+  getCurrentDate(): string | undefined {
+    return localTodayString();
   }
 
   async call<T = unknown>(action: string, args: unknown[] = []): Promise<RoamResponse<T>> {

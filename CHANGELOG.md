@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.7.0 - 2026-06-03
+
+- Added a new tool **`append_to_daily_note`** — a quick-capture tool for adding markdown to a daily
+  note (todos, notes, summaries). Defaults to today's daily note (also accepts a `date`: `MM-DD-YYYY`
+  or `today`/`yesterday`/`tomorrow`), creates the page if needed, and optionally appends under an
+  existing top-level section via `nestUnder`. It is a thin wrapper over the same
+  `data.block.fromMarkdown` action `create_block` already uses — no new backend action — added for
+  discoverability and as a narrow, append-only capture surface.
+
+## 0.6.8 - 2026-06-03
+
+- `create_block`'s `dailyNotePage` now accepts the relative words **`today`**, **`yesterday`**, and
+  **`tomorrow`** (case-insensitive) in addition to `MM-DD-YYYY`. They are resolved to a concrete
+  `MM-DD-YYYY` **before the value crosses the wire** — against each transport's notion of "today"
+  (local: the machine clock; hosted: the user's picker timezone) — so the backend and renderer see no
+  new vocabulary and there is no version coupling. A literal `MM-DD-YYYY` passes through unchanged.
+- Added an optional `getCurrentDate?(): string | undefined` to the `RoamActionClient` interface (the
+  transport's `yyyy-MM-dd` "today"). The local `RoamClient` implements it from the machine clock;
+  core throws rather than silently falling back to its own (UTC) clock if a relative word arrives
+  without a base date.
+
+## 0.6.7 - 2026-06-02
+
+- Added **structured tool output on the 8 write tools** (`create_page`, `create_block`,
+  `add_comment`, `update_block`, `update_page`, `move_block`, `delete_block`,
+  `delete_page`): they declare an `outputSchema` and return `structuredContent`
+  alongside the text channel. Schemas are permissive (`.passthrough()`, optional fields)
+  so backend shape drift doesn't break validation.
+- The 9 read tools (and file/nav/standalone) stay **content-only** — `structuredContent`
+  is emitted only for tools that declare an `outputSchema`. For reads it would just
+  duplicate the (often large) result already JSON-stringified into the text channel, and
+  read shapes still evolve — risky since clients (e.g. ChatGPT) validate against a
+  ~1-day-stale cached `tools/list` schema.
+- `get_page` / `get_block` now return an explicit `{ found: false }` on a miss
+  (instead of an empty object that read as a successful empty page/block).
+- Hardened `delete_block` / `delete_page` descriptions: deletion is irreversible and
+  removes all descendants, and for `delete_block` deleting a referenced block
+  replaces those references elsewhere with the block's text (and comments count as
+  backrefs); steer inspect-first via `get_block` + `get_backlinks`.
+- Graph identity is now carried as a structured `graph` field (canonical graph name),
+  injected into `structuredContent` + the JSON text body, instead of a `"Roam graph: …"`
+  text prefix (which read as block content and made a read's JSON non-parseable).
+- Fixed `GetBlockResponse.path` type (`string` → `string[]`).
+- Raised the `@modelcontextprotocol/sdk` floor to `>=1.26.0 <2.0.0`.
+
+## 0.6.6 - 2026-06-01
+
+- Added MCP tool **annotations** (`readOnlyHint` / `destructiveHint` /
+  `idempotentHint` / `openWorldHint`) + human titles to every tool, sourced in core
+  and forwarded by the local and hosted MCP servers. Fixes ChatGPT silently dropping
+  write tool calls (its safety layer blocks tools that lack these hints).
+- Renamed the local MCP server identity to `roam-mcp-local`.
+
 ## 0.6.5 - 2026-05-26
 
 - Published all four workspace packages together for the first time:

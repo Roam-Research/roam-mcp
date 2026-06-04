@@ -65,6 +65,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   tools,
   routeToolCall,
+  stripUndeclaredStructuredContent,
   getMcpConfig,
   RoamError,
   ErrorCodes,
@@ -72,7 +73,14 @@ import {
 
 // If these instructions change, the remote MCP server may need the same update.
 const server = new McpServer(
-  { name: "roam-mcp", version: "0.6.5" },
+  {
+    name: "roam-mcp-local",
+    title: "Roam Research",
+    description:
+      "Tools for reading and writing your Roam Research graph(s): pages, blocks, search, queries, comments, and files.",
+    websiteUrl: "https://roamresearch.com",
+    version: "0.7.0",
+  },
   {
     instructions:
       "This server exposes tools for a user's Roam Research graph(s).\n" +
@@ -82,17 +90,25 @@ const server = new McpServer(
   },
 );
 
-// Register each tool with its Zod schema
+// Register each tool with its Zod schema. title + annotations come from each
+// tool definition (core data/desktop tools + local standalones); forward them
+// generically so the tools/list metadata stays consistent across the local and
+// hosted MCP servers.
 for (const tool of tools) {
   server.registerTool(
     tool.name,
     {
+      title: tool.title,
       description: tool.description,
       inputSchema: tool.schema,
+      annotations: tool.annotations,
+      outputSchema: tool.outputSchema,
     },
     async (args) => {
       try {
-        return await routeToolCall(tool.name, args as Record<string, unknown>);
+        const result = await routeToolCall(tool.name, args as Record<string, unknown>);
+        // Schema-less tools are content-only (shared core invariant).
+        return stripUndeclaredStructuredContent(result, tool);
       } catch (error) {
         // Safety net for unexpected errors (RoamErrors are handled by routeToolCall)
         const message = error instanceof Error ? error.message : String(error);

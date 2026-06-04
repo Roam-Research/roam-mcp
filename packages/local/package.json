@@ -1,6 +1,6 @@
 {
   "name": "@roam-research/roam-tools-local",
-  "version": "0.6.5",
+  "version": "0.7.0",
   "description": "Local Roam Desktop API transport for @roam-research/roam-tools-core",
   "repository": {
     "type": "git",
@@ -37,7 +37,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@roam-research/roam-tools-core": "0.6.5",
+    "@roam-research/roam-tools-core": "0.7.0",
     "@inquirer/prompts": "^8.2.0",
     "open": "^11.0.0",
     "zod": "^3.25.76"

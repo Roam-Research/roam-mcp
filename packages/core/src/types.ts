@@ -1,12 +1,26 @@
 // Re-export MCP types for tool results
-export type { CallToolResult, TextContent, ImageContent } from "@modelcontextprotocol/sdk/types.js";
+export type {
+  CallToolResult,
+  TextContent,
+  ImageContent,
+  ToolAnnotations,
+} from "@modelcontextprotocol/sdk/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 // Helper to create a text result
 export function textResult(value: unknown): CallToolResult {
   const text = typeof value === "string" ? value : JSON.stringify(value, null, 2);
-  return { content: [{ type: "text", text }] };
+  const result: CallToolResult = { content: [{ type: "text", text }] };
+  // Additive structured output: when value is a plain object, also expose it as
+  // structuredContent so tools that declare an outputSchema satisfy the SDK's
+  // validation (it requires structuredContent on success). The text block above
+  // is unchanged. Arrays/strings/null get text only — tools returning those declare
+  // no outputSchema, so the registration strip-gate keeps them content-only.
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    result.structuredContent = value as Record<string, unknown>;
+  }
+  return result;
 }
 
 // Helper to create an image result
@@ -364,7 +378,7 @@ export interface GetPageResponse {
 export interface GetBlockResponse {
   uid: string;
   markdown: string;
-  path: string; // breadcrumb path as markdown string
+  path: string[]; // breadcrumb path as markdown strings (vector via ai-md/block-path-markdown)
   queriedAt: string;
 }
 
@@ -407,4 +421,11 @@ export type TokenInfoResult =
 export interface RoamActionClient {
   call<T = unknown>(action: string, args?: unknown[]): Promise<RoamResponse<T>>;
   getTokenInfo?(): Promise<TokenInfoResult>;
+  // Transport's notion of the user's "today" as a yyyy-MM-dd calendar string.
+  // Remote returns the picker-timezone date; local returns the machine-local
+  // date. Used by createBlock to resolve relative dailyNotePage words. Optional
+  // for interface back-compat, but ALL first-party transports implement it —
+  // core throws (it never guesses with its own clock) if a relative
+  // dailyNotePage word arrives without one.
+  getCurrentDate?(): string | undefined;
 }

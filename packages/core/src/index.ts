@@ -47,6 +47,7 @@ export type {
   QueryResponse,
   TokenInfoResponse,
   TokenInfoResult,
+  ToolAnnotations,
 } from "./types.js";
 export {
   GraphConfigSchema,
@@ -66,6 +67,7 @@ export {
   tools,
   findTool,
   routeToolCall,
+  stripUndeclaredStructuredContent,
   contentTools,
   dataTools,
   desktopUiTools,
@@ -78,3 +80,8 @@ export type {
   StandaloneToolDefinition,
   RouteToolCallOptions,
 } from "./tools.js";
+
+// localTodayString is the only relative-date helper with an external consumer
+// (the local transport's getCurrentDate()). The schema/resolver helpers stay
+// core-internal — operations import them directly from ./relative-date.js.
+export { localTodayString } from "./relative-date.js";

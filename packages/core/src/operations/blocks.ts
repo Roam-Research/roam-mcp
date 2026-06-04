@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { CallToolResult, GetBlockResponse, RoamActionClient } from "../types.js";
 import { textResult, RoamError, ErrorCodes } from "../types.js";
+import { isRelativeDateWord, MM_DD_YYYY, resolveDailyNotePage } from "../relative-date.js";
 
 // Schemas
 export const CreateBlockSchema = z.object({
@@ -18,10 +19,13 @@ export const CreateBlockSchema = z.object({
     ),
   dailyNotePage: z
     .string()
-    .regex(/^\d{2}-\d{2}-\d{4}$/, "Must be MM-DD-YYYY format (e.g. '03-17-2026')")
+    .refine((v) => MM_DD_YYYY.test(v) || isRelativeDateWord(v), {
+      message:
+        "Must be MM-DD-YYYY format (e.g. '03-17-2026') or a relative day: 'today', 'yesterday', or 'tomorrow'",
+    })
     .optional()
     .describe(
-      "Daily note date in MM-DD-YYYY format (e.g. '03-17-2026'). Targets that day's daily note page, creating it if needed. Exactly one of parentUid, pageTitle, or dailyNotePage is required.",
+      "Target a daily note page, creating it if needed. Either a date in MM-DD-YYYY format (e.g. '03-17-2026') or a relative day: 'today', 'yesterday', or 'tomorrow' (case-insensitive; resolved to the user's local calendar date). Exactly one of parentUid, pageTitle, or dailyNotePage is required.",
     ),
   nestUnder: z
     .string()
@@ -34,6 +38,26 @@ export const CreateBlockSchema = z.object({
     .union([z.coerce.number(), z.enum(["first", "last"])])
     .optional()
     .describe("Position (number, 'first', or 'last'). Defaults to 'last'"),
+});
+
+export const AppendToDailyNoteSchema = z.object({
+  markdown: z.string().describe("Markdown to append as one or more new blocks."),
+  nestUnder: z
+    .string()
+    .optional()
+    .describe(
+      "Optional: add beneath an existing top-level section block on the daily note (e.g. 'TODOs'), matched by exact text (including markup like [[links]]); created if absent. Omit to append at the page's top level.",
+    ),
+  date: z
+    .string()
+    .refine((v) => MM_DD_YYYY.test(v) || isRelativeDateWord(v), {
+      message:
+        "Must be MM-DD-YYYY format (e.g. '03-17-2026') or a relative day: 'today', 'yesterday', or 'tomorrow'",
+    })
+    .optional()
+    .describe(
+      "Which daily note to append to: a date in MM-DD-YYYY format, or a relative day 'today'/'yesterday'/'tomorrow' (case-insensitive; resolved to the user's local calendar date). Defaults to today.",
+    ),
 });
 
 export const GetBlockSchema = z.object({
@@ -99,6 +123,7 @@ export const GetBacklinksSchema = z.object({
 
 // Types derived from schemas
 export type CreateBlockParams = z.infer<typeof CreateBlockSchema>;
+export type AppendToDailyNoteParams = z.infer<typeof AppendToDailyNoteSchema>;
 export type GetBlockParams = z.infer<typeof GetBlockSchema>;
 export type UpdateBlockParams = z.infer<typeof UpdateBlockSchema>;
 export type DeleteBlockParams = z.infer<typeof DeleteBlockSchema>;
@@ -140,16 +165,49 @@ export async function createBlock(
     );
   }
 
+  // Resolve a relative dailyNotePage ("today"/"yesterday"/"tomorrow") to a
+  // concrete MM-DD-YYYY before it goes on the wire, against the transport's
+  // notion of "today" (remote: picker timezone; local: machine clock). A
+  // literal MM-DD-YYYY passes through unchanged, so the backend/renderer see no
+  // new vocabulary.
+  const resolvedDailyNote =
+    params.dailyNotePage !== undefined
+      ? resolveDailyNotePage(params.dailyNotePage, client.getCurrentDate?.())
+      : undefined;
+
   const location: Record<string, unknown> = {
     order: params.order ?? "last",
   };
   if (params.parentUid !== undefined) {
     location["parent-uid"] = params.parentUid;
-  } else if (params.dailyNotePage !== undefined) {
-    location["page-title"] = { "daily-note-page": params.dailyNotePage };
+  } else if (resolvedDailyNote !== undefined) {
+    location["page-title"] = { "daily-note-page": resolvedDailyNote };
   } else {
     location["page-title"] = params.pageTitle;
   }
+  if (params.nestUnder !== undefined) {
+    location["nest-under-str"] = params.nestUnder;
+  }
+
+  const response = await client.call<{ uids: string[] }>("data.block.fromMarkdown", [
+    { location, "markdown-string": params.markdown },
+  ]);
+  return textResult(response.result ?? { uids: [] });
+}
+
+export async function appendToDailyNote(
+  client: RoamActionClient,
+  params: AppendToDailyNoteParams,
+): Promise<CallToolResult> {
+  // Capture wrapper over create_block's daily-note path: resolve the target day
+  // (relative words against the transport's "today"; defaults to today) and append
+  // via data.block.fromMarkdown — nestUnder finds-or-creates the section.
+  const resolvedDailyNote = resolveDailyNotePage(params.date ?? "today", client.getCurrentDate?.());
+
+  const location: Record<string, unknown> = {
+    order: "last",
+    "page-title": { "daily-note-page": resolvedDailyNote },
+  };
   if (params.nestUnder !== undefined) {
     location["nest-under-str"] = params.nestUnder;
   }
@@ -168,7 +226,10 @@ export async function getBlock(
   if (params.maxDepth !== undefined) apiParams.maxDepth = params.maxDepth;
 
   const response = await client.call<GetBlockResponse | undefined>("data.ai.getBlock", [apiParams]);
-  return textResult(response.result ?? null);
+  // Not-found: a found block always has a `uid`, so treat a nullish/uid-less result
+  // (incl. `{}`) as a miss and return an explicit { found: false } signal — clearer
+  // than an empty object that reads as a successful empty block.
+  return textResult(response.result?.uid ? response.result : { found: false });
 }
 
 export async function updateBlock(

@@ -84,7 +84,7 @@ describe("local routeToolCall — backwards-compat", () => {
     expect(result.isError).toBeFalsy();
 
     const text = (result.content[0] as { text: string }).text;
-    expect(text).toContain("Roam graph: default");
+    expect(JSON.parse(text).graph).toBe("default-graph");
     expect(text).toContain("fallback markdown");
   });
 });
@@ -182,8 +182,8 @@ describe("local routeToolCall — get_graph_guidelines local-sync side flow", ()
 
     expect(result.isError).toBeFalsy();
     const text = (result.content[0] as { text: string }).text;
-    // Graph-name prefix from prependGraphInfo
-    expect(text.startsWith("Roam graph: test")).toBe(true);
+    // graph field from withGraphField
+    expect(JSON.parse(text).graph).toBe("test-graph");
     // Result enriched by enrichResultWithTokenInfo
     expect(text).toContain('"accessLevel": "read-append"');
     expect(text).toContain('"scopes"');

@@ -156,7 +156,8 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 - `create_page` - Create page with markdown content
 - `update_page` - Update page title or children view type
 - `delete_page` - Delete a page
-- `create_block` - Create blocks (by parent UID, page title, or daily note date; with optional nest-under)
+- `create_block` - Create blocks (by parent UID, page title, or daily note date — MM-DD-YYYY or `today`/`yesterday`/`tomorrow`; with optional nest-under)
+- `append_to_daily_note` - Append/capture markdown to a daily note (today by default, or MM-DD-YYYY / `today`/`yesterday`/`tomorrow`; optional nest-under section)
 - `update_block` - Update block content/properties
 - `move_block` - Move a block to a new location
 - `delete_block` - Delete a block

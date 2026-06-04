@@ -78,7 +78,10 @@ export async function getPage(
   if (params.maxDepth !== undefined) apiParams.maxDepth = params.maxDepth;
 
   const response = await client.call<GetPageResponse | undefined>("data.ai.getPage", [apiParams]);
-  return textResult(response.result ?? null);
+  // Not-found: a found page always has a `uid`, so treat a nullish/uid-less result
+  // (incl. `{}`) as a miss and return an explicit { found: false } signal — clearer
+  // than an empty object that reads as a successful empty page.
+  return textResult(response.result?.uid ? response.result : { found: false });
 }
 
 export async function deletePage(

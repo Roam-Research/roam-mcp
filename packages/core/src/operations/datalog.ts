@@ -20,5 +20,7 @@ export async function datalogQuery(
 ): Promise<CallToolResult> {
   const args = params.inputs ? [params.query, ...params.inputs] : [params.query];
   const response = await client.call<unknown>("q", args);
+  // Content-only read (no outputSchema): the raw scalar/tuple/collection/relation
+  // goes on the text channel as-is.
   return textResult(response.result ?? []);
 }

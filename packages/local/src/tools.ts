@@ -21,18 +21,40 @@ import {
 } from "./operations/graphs.js";
 
 // Local-only standalone tools (read ~/.roam-tools.json, talk to Roam Desktop API).
+// Unlike the hosted standalones (a no-op redirect), the local setup_new_graph
+// genuinely writes — it requests a token (user grant) and saves to
+// ~/.roam-tools.json — so it is NOT read-only. openWorldHint is false for both:
+// they only talk to the user's own Roam Desktop.
 export const graphManagementTools: StandaloneToolDefinition[] = [
   defineStandaloneTool(
     "list_graphs",
     "List all configured graphs with their nicknames. Also provides setup instructions for connecting additional graphs.",
     ListGraphsSchema,
     listGraphs,
+    {
+      title: "List graphs",
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
   ),
   defineStandaloneTool(
     "setup_new_graph",
     "Set up a new Roam graph for access, or list available graphs. Call without arguments to see which graphs are available in Roam Desktop. Call with graph and nickname to connect a specific graph — ask the user what they'd like to call the graph before choosing a nickname. The user will see an approval dialog in Roam desktop app and must approve the token request. If the graph is already configured, returns the existing configuration without making changes.",
     SetupNewGraphSchema,
     setupNewGraph,
+    {
+      title: "Set up new graph",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
   ),
 ];
 
