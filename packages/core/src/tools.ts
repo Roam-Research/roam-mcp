@@ -398,6 +398,28 @@ export const dataTools: ClientToolDefinition[] = [
   ),
 ];
 
+export interface GetDataToolsOptions {
+  /** Drop the trailing get_graph_guidelines nudge (GUIDELINES_NOTE) from each
+   *  data-tool description in tools/list. Descriptions only — no behavior
+   *  change. Default: false. */
+  omitGuidelinesNoteSuffix?: boolean;
+}
+
+/** Data tools for tools/list registration. Returns the shared `dataTools` array
+ *  unchanged by default; with `omitGuidelinesNoteSuffix`, returns a fresh array
+ *  of fresh objects with the trailing GUIDELINES_NOTE stripped. Never mutates
+ *  the shared `dataTools`. The `endsWith` guard is self-correcting: tools that
+ *  never carried the note pass through untouched, and the strip can't drift from
+ *  what was appended. */
+export function getDataTools(opts: GetDataToolsOptions = {}): ClientToolDefinition[] {
+  if (!opts.omitGuidelinesNoteSuffix) return dataTools;
+  return dataTools.map((t) =>
+    t.description.endsWith(GUIDELINES_NOTE)
+      ? { ...t, description: t.description.slice(0, -GUIDELINES_NOTE.length) }
+      : t,
+  );
+}
+
 // Desktop UI Tools (require local Roam Desktop — file ops + window/selection introspection;
 // hosted MCP omits these because the parameters/effects assume a local environment).
 export const desktopUiTools: ClientToolDefinition[] = [

@@ -70,6 +70,7 @@ export {
   stripUndeclaredStructuredContent,
   contentTools,
   dataTools,
+  getDataTools,
   desktopUiTools,
   defineTool,
   defineStandaloneTool,
@@ -78,6 +79,7 @@ export type {
   ToolDefinition,
   ClientToolDefinition,
   StandaloneToolDefinition,
+  GetDataToolsOptions,
   RouteToolCallOptions,
 } from "./tools.js";
 
