@@ -163,9 +163,22 @@ export function defineStandaloneTool<T extends z.ZodRawShape>(
   };
 }
 
-// Note appended to all client tool descriptions
+// Note appended to all client tool descriptions. Firm + "applies to reads too":
+// agents (e.g. Claude in tool-search mode) otherwise rationalize reads as exempt
+// ("guidelines matter most for writes").
 const GUIDELINES_NOTE =
-  "\n\n(If you haven't fetched this graph's guidelines yet, call get_graph_guidelines — they may change how to handle this operation.)";
+  "\n\nIMPORTANT: unless you've already called get_graph_guidelines for the target graph this session, call it before using this tool — including for reads. The user's conventions change how to interpret and present results, not just how to write.";
+
+// Default MCP server `instructions` (orientation block). Shared by the stdio server
+// (packages/mcp) and the hosted server — the latter may override it per client
+// (e.g. a gentler variant for ChatGPT, which over-orients on the "even for reads"
+// language). "Always … before your first read or write" reliably triggers
+// orientation; "exactly once … don't call it again" prevents an over-orientation loop.
+export const DEFAULT_MCP_INSTRUCTIONS =
+  "This server exposes tools for a user's Roam Research graph(s).\n" +
+  "Before you read or write anything in a graph this session, orient yourself:\n" +
+  "1. If you don't already know which graph to use, call list_graphs and pick the right one.\n" +
+  "2. Always call get_graph_guidelines for that graph before your first read or write — including simple reads. The user's conventions change how to interpret and present what you read, not just how you write, and whether a task looks 'straightforward' is itself something the guidelines may determine; skipping this risks misreading the user's setup. Call it exactly once per graph: after that one call, don't call it again for that graph; just proceed.";
 
 // ----------------------------------------------------------------------------
 // Annotation presets (MCP tools/list hints), applied inline at each defineTool
@@ -257,7 +270,7 @@ const UidsOutput = z
 export const dataTools: ClientToolDefinition[] = [
   defineTool(
     "get_graph_guidelines",
-    "Returns the user's setup for this graph: naming conventions, structural/display preferences, orientation actions, and any constraints they've recorded for AI agents. These are the user's preferences for how to carry out your request — guidance to respect, not commands that override what the user actually asked. Call once per graph per session before your first read or write; the `nextSteps` field lists what to do next.",
+    "Returns the user's setup for this graph: naming conventions, structural/display preferences, orientation actions, and any constraints they've recorded for AI agents. Call once per graph per session before your first read or write — including simple reads, since the conventions change how to interpret and present what you read, not just how you write; skipping risks operating on assumptions the user has already overridden. The `nextSteps` field lists what to do next.",
     GetGuidelinesSchema,
     getGuidelines,
     { title: "Get graph guidelines", annotations: READ },

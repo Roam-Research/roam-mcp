@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.7.3 - 2026-06-13
+
+- **Orientation copy: firm "applies to reads too", as the default — with a per-client escape
+  hatch.** Live testing showed Claude (especially in tool-search mode) skipping
+  `get_graph_guidelines` on reads — rationalizing them as exempt ("guidelines matter most for
+  writes") — after 0.7.2 softened the copy to calm ChatGPT's over-orientation loop. ChatGPT and
+  Claude want opposite copy, so the firm version is now the default and ChatGPT is the exception:
+  - The `get_graph_guidelines` description and the per-tool `GUIDELINES_NOTE` nudge are firm and
+    explicitly cover reads ("including simple reads / for reads"; the user's conventions change how
+    to _interpret and present_ what you read, not just how you write). Dropped 0.7.1's "preferences,
+    not commands" framing, which had downgraded guidelines to optional.
+  - New export **`DEFAULT_MCP_INSTRUCTIONS`** — the shared server `instructions` orientation block,
+    used by the stdio server and as the hosted server's default. The hosted (remote) server
+    overrides it with a gentler variant for ChatGPT, which over-orients on the "even for reads"
+    language. Descriptions/instructions only; no behavior change.
+
 ## 0.7.2 - 2026-06-13
 
 - **`get_graph_guidelines` description reworked.** Replaced the 0.7.1 "hardening" sentence — which

@@ -2,14 +2,15 @@ import { describe, expect, it } from "vitest";
 import { dataTools, getDataTools } from "../src/tools.js";
 
 // getDataTools is the seam the hosted (ChatGPT) transport uses to drop the
-// trailing "call get_graph_guidelines" nudge from each data-tool description in
+// trailing get_graph_guidelines nudge from each data-tool description in
 // tools/list. It must be a pure, opt-in transform: the default path returns the
 // shared `dataTools` untouched (local CLI/MCP keep the nudge), and the strip path
 // must never mutate the shared array. These tests pin that contract.
 
-// The suffix every nudged tool carries (mirrors GUIDELINES_NOTE in tools.ts). We
-// don't import the const (it's intentionally private); we assert structurally.
-const NUDGE = "call get_graph_guidelines";
+// The nudge mentions get_graph_guidelines by name (mirrors GUIDELINES_NOTE in
+// tools.ts); get_graph_guidelines's own description does not. We don't import the
+// const (it's intentionally private); we assert structurally.
+const NUDGE = "get_graph_guidelines";
 
 // get_graph_guidelines is the one data tool that never carries the nudge (you
 // don't tell it to call itself) — so the endsWith guard must pass it through.

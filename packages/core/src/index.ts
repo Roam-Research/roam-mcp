@@ -74,6 +74,7 @@ export {
   desktopUiTools,
   defineTool,
   defineStandaloneTool,
+  DEFAULT_MCP_INSTRUCTIONS,
 } from "./tools.js";
 export type {
   ToolDefinition,

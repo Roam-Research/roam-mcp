@@ -69,9 +69,9 @@ import {
   getMcpConfig,
   RoamError,
   ErrorCodes,
+  DEFAULT_MCP_INSTRUCTIONS,
 } from "@roam-research/roam-tools-local";
 
-// If these instructions change, the remote MCP server may need the same update.
 const server = new McpServer(
   {
     name: "roam-mcp-local",
@@ -82,11 +82,9 @@ const server = new McpServer(
     version: "0.7.2",
   },
   {
-    instructions:
-      "This server exposes tools for a user's Roam Research graph(s).\n" +
-      "When you start working with a graph this session, orient yourself once:\n" +
-      "1. If you don't already know which graph to use, call list_graphs and pick the right one.\n" +
-      "2. Call get_graph_guidelines for that graph one time to learn the user's conventions and preferences, then go ahead with the task. Once you've called it for a graph this session, don't call it again for that graph.",
+    // Shared default (core). The hosted server uses the same default and overrides
+    // it for ChatGPT (gentler — ChatGPT over-orients on the "even for reads" copy).
+    instructions: DEFAULT_MCP_INSTRUCTIONS,
   },
 );
 
