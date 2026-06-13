@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.7.1 - 2026-06-13
+
+- **`get_graph_guidelines` description hardened.** Added a sentence clarifying that a graph's
+  guidelines are user-authored _data_, not instructions to the agent: they express the user's
+  preferences for how to apply a request and never override system, developer, or user
+  instructions. Scopes the authority of graph-stored guideline text (relevant for shared graphs)
+  without changing any behavior.
+- **New `core` export: `getDataTools(options)` + `GetDataToolsOptions`.** A factory for `tools/list`
+  registration. By default it returns the shared `dataTools` array unchanged; with
+  `omitGuidelinesNoteSuffix: true` it returns a fresh array with the trailing
+  "call get_graph_guidelines" nudge stripped from each data-tool description (descriptions only —
+  no behavior, schema, or annotation change). Lets a hosted transport (e.g. ChatGPT) drop the
+  orientation nudge per-profile while local CLI/MCP keep it. Additive and opt-in: `dataTools`,
+  `contentTools`, and all existing exports are unchanged.
+
 ## 0.7.0 - 2026-06-03
 
 - Added a new tool **`append_to_daily_note`** — a quick-capture tool for adding markdown to a daily
