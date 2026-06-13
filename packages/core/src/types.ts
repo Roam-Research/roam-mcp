@@ -40,8 +40,13 @@ export function errorResult(message: string): CallToolResult {
 // Graph type: hosted (cloud) or offline (local)
 export type GraphType = "hosted" | "offline";
 
-// Access level type
-export type AccessLevel = "read-only" | "read-append" | "full";
+// Access level type.
+// NOTE: `read-edit-own` (read + append + edit/delete ONLY the agent's own content) is shipped in the
+// remote/hosted MCP (relemma/functions_ts), enforced server-side in the shared write defevents. The
+// LOCAL Desktop API tier is deferred: the local API exposes the full `roamAlphaAPI` surface (an
+// open-ended set of edit actions), not the hosted MCP's closed allowlist, so gating it there is a
+// larger effort. `accessLevel` is carried, not enforced, in core.
+export type AccessLevel = "read-only" | "read-append" | "read-edit-own" | "full";
 
 // Config file schema for ~/.roam-tools.json
 // Graph names can only contain alphanumeric characters, hyphens, and underscores
@@ -62,7 +67,7 @@ export const GraphConfigSchema = z.object({
     .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Nickname must be lowercase letters, numbers, and hyphens")
     .describe("Short identifier for the graph (lowercase, hyphens, no spaces)"),
   accessLevel: z
-    .enum(["read-only", "read-append", "full"])
+    .enum(["read-only", "read-append", "read-edit-own", "full"])
     .optional()
     .describe("Token access level"),
   lastKnownTokenStatus: z

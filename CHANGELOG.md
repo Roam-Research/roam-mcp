@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.4 - 2026-06-13
+
+- **Add `read-edit-own` to the `AccessLevel` type** (read + append + edit/delete only the agent's own
+  content). Additive and runtime-safe: a new union member, with existing values and behavior unchanged,
+  the local `connect` CLI's hardcoded level list untouched, and `accessLevel` still carried (not enforced)
+  in core. Shipped as a patch so `^0.7.x` consumers (the caret-pinned hosted MCP) pick it up automatically.
+  Also accepted by the `GraphConfigSchema` `accessLevel` enum and the `validLevels` token-info status
+  check. The tier is enforced server-side in the remote/hosted MCP (relemma); the local Desktop API tier
+  is deferred (the local API exposes the full `roamAlphaAPI` surface, not the hosted MCP's closed allowlist).
+
 ## 0.7.3 - 2026-06-13
 
 - **Orientation copy: firm "applies to reads too", as the default — with a per-client escape

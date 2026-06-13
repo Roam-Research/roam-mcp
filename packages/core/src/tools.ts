@@ -738,7 +738,7 @@ export async function routeToolCall(
       if (tokenInfoResult.status === "active") {
         const info = tokenInfoResult.info;
         // Validate access level before writing to prevent status corruption
-        const validLevels: AccessLevel[] = ["read-only", "read-append", "full"];
+        const validLevels: AccessLevel[] = ["read-only", "read-append", "read-edit-own", "full"];
         const level = validLevels.includes(info.grantedAccessLevel as AccessLevel)
           ? (info.grantedAccessLevel as AccessLevel)
           : undefined;
