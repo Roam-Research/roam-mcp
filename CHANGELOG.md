@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.2 - 2026-06-13
+
+- **`get_graph_guidelines` description reworked.** Replaced the 0.7.1 "hardening" sentence — which
+  framed guidelines via the system/developer/user instruction hierarchy and, in practice, sent
+  high-reasoning agents off on a "where's the developer message?" tangent — with a lighter hint:
+  guidelines are the user's preferences for _how_ to carry out a request, guidance to respect, not
+  commands that override what the user actually asked. Also dropped the "your work will likely need
+  to be redone" pressure. Descriptions only; no behavior change.
+- **Softened the server `instructions`.** The orientation block no longer says "do this even for
+  simple reads / skipping risks violating your setup"; it now says to call `get_graph_guidelines`
+  **once per graph, then proceed — don't call it again** for that graph. Counters an observed
+  over-orientation loop (a high-reasoning client re-calling `get_graph_guidelines` dozens of times in
+  one turn). Mirrored in the hosted MCP server.
+
 ## 0.7.1 - 2026-06-13
 
 - **`get_graph_guidelines` description hardened.** Added a sentence clarifying that a graph's

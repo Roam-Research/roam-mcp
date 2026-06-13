@@ -79,14 +79,14 @@ const server = new McpServer(
     description:
       "Tools for reading and writing your Roam Research graph(s): pages, blocks, search, queries, comments, and files.",
     websiteUrl: "https://roamresearch.com",
-    version: "0.7.1",
+    version: "0.7.2",
   },
   {
     instructions:
       "This server exposes tools for a user's Roam Research graph(s).\n" +
-      "Before your FIRST content operation in a session — read OR write — orient yourself:\n" +
-      "1. If you don't already know which graph to use (or the user may have several configured), call list_graphs first and pick the right one.\n" +
-      "2. Call get_graph_guidelines for that graph once. Do this even for operations that look straightforward, including simple reads — whether an operation is straightforward is itself something the guidelines may determine. They return the user's naming conventions, structure/display preferences, and required orientation steps; skipping them risks violating the user's setup.",
+      "When you start working with a graph this session, orient yourself once:\n" +
+      "1. If you don't already know which graph to use, call list_graphs and pick the right one.\n" +
+      "2. Call get_graph_guidelines for that graph one time to learn the user's conventions and preferences, then go ahead with the task. Once you've called it for a graph this session, don't call it again for that graph.",
   },
 );
 
