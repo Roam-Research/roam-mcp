@@ -125,9 +125,14 @@ export async function getGuidelines(client: RoamActionClient): Promise<CallToolR
   };
 
   const dnpTitle = result.todaysDailyNotePage;
+  // Lead with an explicit STOP so an agent re-reading this result mid-loop sees it:
+  // orientation is done, do not call get_graph_guidelines again for this graph.
+  // (ChatGPT otherwise re-orients before every read; see functions_ts route-profile.ts.)
+  const stop =
+    "You now have this graph's guidelines (the `graph` field below names the graph). Do NOT call get_graph_guidelines again for this graph this session; you already have everything you need. ";
   const nextSteps = dnpTitle
-    ? `Start by reading today's daily note page ("${dnpTitle}") with get_page — this is the user's primary workspace for the day. If you need more context, call search with an empty query for recently edited and viewed content. Skip these orientation steps only when the user has already given you a specific task to execute (e.g. "create a page called X").`
-    : `Start by calling search with an empty query to see recently edited and viewed content. Skip this only when the user has already given you a specific task to execute.`;
+    ? `${stop}Next, read today's daily note page ("${dnpTitle}") with get_page (the user's primary workspace for the day). If you need more context, call search with an empty query for recently edited and viewed content. Skip the daily-note step only when the user has already given you a specific task to execute (e.g. "create a page called X").`
+    : `${stop}Next, call search with an empty query to see recently edited and viewed content. Skip this only when the user has already given you a specific task to execute.`;
 
   return textResult({
     ...result,

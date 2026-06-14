@@ -79,7 +79,7 @@ const server = new McpServer(
     description:
       "Tools for reading and writing your Roam Research graph(s): pages, blocks, search, queries, comments, and files.",
     websiteUrl: "https://roamresearch.com",
-    version: "0.7.4",
+    version: "0.7.5",
   },
   {
     // Shared default (core). The hosted server uses the same default and overrides

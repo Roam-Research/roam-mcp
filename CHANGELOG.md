@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.5 - 2026-06-14
+
+- **`get_graph_guidelines` `nextSteps` now leads with an explicit "stop orienting"
+  directive**, to counter ChatGPT's over-orientation loop (observed re-calling
+  `get_graph_guidelines` ~20× in one turn before doing the task, even on a fresh
+  connector — so not a cache issue). `nextSteps` now opens with "You now have this
+  graph's guidelines … Do NOT call get_graph_guidelines again for this graph this
+  session" before the existing read-the-daily-note guidance, so an agent re-reading
+  the result mid-loop sees the stop in the response body itself, not only in the
+  tool description. Copy-only; no schema or behavior change, and it helps every
+  client. (The hosted ChatGPT profile in relemma's `functions_ts` separately drops
+  the "before your first read" trigger from its gentler instructions/description;
+  this core change is the belt-and-suspenders.)
+
 ## 0.7.4 - 2026-06-13
 
 - **Add `read-edit-own` to the `AccessLevel` type** (read + append + edit/delete only the agent's own
