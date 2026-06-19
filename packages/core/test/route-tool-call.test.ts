@@ -34,7 +34,7 @@ describe("routeToolCall — injection contract", () => {
                   uid: "abc",
                   markdown: "fake markdown content",
                   queriedAt: "2026-01-01T00:00:00Z",
-                  // a backend-provided `graph` must NOT win over the canonical resolved name
+                  // a backend-provided `graph` must NOT win over the caller's echoed identifier
                   graph: "spoofed",
                 },
               };
@@ -52,9 +52,30 @@ describe("routeToolCall — injection contract", () => {
     const first = result.content[0];
     expect(first.type).toBe("text");
     const text = (first as { text: string }).text;
-    // canonical resolved name wins over the backend's `graph: "spoofed"`
-    expect(JSON.parse(text).graph).toBe("test-graph");
+    // the caller's identifier ("test", a nickname here) is echoed, and wins over `graph: "spoofed"`
+    expect(JSON.parse(text).graph).toBe("test");
     expect(text).toContain("fake markdown content");
+  });
+
+  it("falls back to the canonical resolved name when the caller passes no graph arg", async () => {
+    const result = await routeToolCall(
+      "get_page",
+      { uid: "abc" }, // no graph arg — nothing to echo
+      {
+        resolveGraph: async () => ({ name: "only-graph", type: "hosted", nickname: "only" }),
+        createClient: () => ({
+          call: async () => ({
+            success: true,
+            result: { uid: "abc", markdown: "body" },
+          }),
+        }),
+        tokenInfoMode: "skip",
+      },
+    );
+
+    const text = (result.content[0] as { text: string }).text;
+    // no caller identifier to echo, so the canonical resolved name is used
+    expect(JSON.parse(text).graph).toBe("only-graph");
   });
 });
 
@@ -95,10 +116,10 @@ describe("routeToolCall — get_graph_guidelines with tokenInfoMode: 'skip'", ()
     // Side flow was skipped
     expect(getTokenInfoSpy).not.toHaveBeenCalled();
     expect(onTokenStatusUpdate).not.toHaveBeenCalled();
-    // graph field still applies (documented behavior)
+    // graph field still applies (documented behavior), echoing the caller's identifier
     expect(result.isError).toBeFalsy();
     const text = (result.content[0] as { text: string }).text;
-    expect(JSON.parse(text).graph).toBe("test-graph");
+    expect(JSON.parse(text).graph).toBe("test");
     expect(text).toContain("do nice things");
   });
 });

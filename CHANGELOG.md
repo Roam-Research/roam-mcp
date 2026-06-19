@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.8.0 - 2026-06-19
+
+_Minor bump (not a patch): this changes `withGraphField`'s observable output. Per
+`docs/architecture.md` §6, a change to the injected `graph` field is a dispatch-contract
+change and is not patch-eligible — the caret-pinned hosted MCP must opt into `^0.8.x`
+deliberately rather than inherit it automatically._
+
+- **The injected `graph` field now echoes the identifier the caller passed** (the
+  nickname or name in the tool call's `graph` arg) instead of always the canonical
+  resolved name. It falls back to the canonical name when no `graph` arg is passed
+  (single-graph auto-select). This completes the `get_graph_guidelines`
+  over-orientation fix from 0.7.5: ChatGPT looped because it called the tool by a
+  nickname (e.g. "work graph"), but the result, which the "do NOT call again for this
+  graph" directive points at, named only the canonical graph (e.g. "chatgpt-mcp-main"),
+  so the agent could never tell it had already oriented the graph it knew by that
+  nickname. Echoing the caller's own identifier lets it match. Applies to every tool
+  and both transports (local and hosted). The value stays a string (no `outputSchema`
+  change; write tools' optional `graph` field still validates) and still overwrites any
+  backend-supplied `graph`, so it is not a spoof vector. No consumer reads the field
+  programmatically; only the agent does.
+
 ## 0.7.5 - 2026-06-14
 
 - **`get_graph_guidelines` `nextSteps` now leads with an explicit "stop orienting"

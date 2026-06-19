@@ -84,7 +84,8 @@ describe("local routeToolCall — backwards-compat", () => {
     expect(result.isError).toBeFalsy();
 
     const text = (result.content[0] as { text: string }).text;
-    expect(JSON.parse(text).graph).toBe("default-graph");
+    // the caller's `graph` arg ("x") is echoed, not the canonical resolved name
+    expect(JSON.parse(text).graph).toBe("x");
     expect(text).toContain("fallback markdown");
   });
 });
@@ -182,8 +183,8 @@ describe("local routeToolCall — get_graph_guidelines local-sync side flow", ()
 
     expect(result.isError).toBeFalsy();
     const text = (result.content[0] as { text: string }).text;
-    // graph field from withGraphField
-    expect(JSON.parse(text).graph).toBe("test-graph");
+    // graph field from withGraphField — echoes the caller's identifier ("test"), not the canonical name
+    expect(JSON.parse(text).graph).toBe("test");
     // Result enriched by enrichResultWithTokenInfo
     expect(text).toContain('"accessLevel": "read-append"');
     expect(text).toContain('"scopes"');

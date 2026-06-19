@@ -254,7 +254,8 @@ const UPLOAD: ToolAnnotations = { ...APPEND, openWorldHint: true };
 // expand-contract (add new field → wait out the cache → drop the old). See the
 // chatgpt-mcp-annotations-and-tool-cache finding. NOTE: .optional() accepts
 // absent/undefined but REJECTS null — a declared field whose producer can emit
-// null needs .nullable(). `graph` is injected by withGraphField (canonical name).
+// null needs .nullable(). `graph` is injected by withGraphField (echoed caller
+// identifier, or canonical name when none passed).
 // ----------------------------------------------------------------------------
 const SuccessOutput = z
   .object({ success: z.boolean().optional(), graph: z.string().optional() })
@@ -520,18 +521,21 @@ export function stripUndeclaredStructuredContent(
 /**
  * Carry the resolved graph identity as a structured `graph` field rather than a
  * "Roam graph: <name>" text prefix (which read as block content and made a read's
- * JSON text non-parseable). Injects the canonical graph name into
- * structuredContent (write tools) and into content[0].text when it parses to a
- * plain JSON object (the only channel for content-only reads). Bare arrays/scalars
- * (datalog raw text), images, non-JSON prose, and isError results are left
- * untouched. Mirrors enrichResultWithTokenInfo's parse-and-rewrite.
+ * JSON text non-parseable). Injects `graphLabel` into structuredContent (write
+ * tools) and into content[0].text when it parses to a plain JSON object (the only
+ * channel for content-only reads). Bare arrays/scalars (datalog raw text), images,
+ * non-JSON prose, and isError results are left untouched. `graphLabel` is the
+ * identifier the caller passed (echoed, see routeToolCall), or the canonical name
+ * when none was passed; either way it overwrites any `graph` key the backend
+ * included, so a backend cannot spoof it. Mirrors enrichResultWithTokenInfo's
+ * parse-and-rewrite.
  */
-function withGraphField(result: CallToolResult, graphName: string): CallToolResult {
+function withGraphField(result: CallToolResult, graphLabel: string): CallToolResult {
   let out = result;
   const sc = result.structuredContent;
   if (sc && typeof sc === "object" && !Array.isArray(sc)) {
-    // canonical resolved graph wins over any `graph` key the backend included
-    out = { ...out, structuredContent: { ...(sc as Record<string, unknown>), graph: graphName } };
+    // the resolved graph identifier wins over any `graph` key the backend included
+    out = { ...out, structuredContent: { ...(sc as Record<string, unknown>), graph: graphLabel } };
   }
   const first = out.content?.[0];
   if (first && first.type === "text") {
@@ -541,7 +545,7 @@ function withGraphField(result: CallToolResult, graphName: string): CallToolResu
         out = {
           ...out,
           content: [
-            { ...first, text: JSON.stringify({ ...parsed, graph: graphName }, null, 2) },
+            { ...first, text: JSON.stringify({ ...parsed, graph: graphLabel }, null, 2) },
             ...out.content.slice(1),
           ],
         };
@@ -685,6 +689,15 @@ export async function routeToolCall(
     const graph = await options.resolveGraph(graphArg as string | undefined);
     const client = await options.createClient(graph);
 
+    // The injected `graph` field echoes the identifier the CALLER passed (nickname or name),
+    // falling back to the canonical resolved name when they passed none (single-graph auto-select).
+    // This lets an agent match a graph it referenced by nickname against the result and honor a
+    // per-graph directive — notably get_graph_guidelines' "call once per graph, then do NOT call
+    // again": ChatGPT looped because the result named only the canonical graph, never the nickname it
+    // had used. The echoed value is client-supplied input already resolved to a real grant, and
+    // withGraphField still overwrites any backend-supplied `graph`, so this is not a spoof vector.
+    const echoedGraph = typeof graphArg === "string" && graphArg.length > 0 ? graphArg : graph.name;
+
     // Special handling for get_graph_guidelines: sync token info in parallel.
     // Only fires in local-sync mode AND when the client implements getTokenInfo.
     // Bind early so TS narrows the optional method through the truthy check.
@@ -758,7 +771,7 @@ export async function routeToolCall(
 
         if (!result.isError) {
           const enriched = enrichResultWithTokenInfo(result, info);
-          return withGraphField(enriched, resolvedGraph.name);
+          return withGraphField(enriched, echoedGraph);
         }
         return result;
       }
@@ -772,7 +785,7 @@ export async function routeToolCall(
         }
       }
       if (!result.isError) {
-        return withGraphField(result, resolvedGraph.name);
+        return withGraphField(result, echoedGraph);
       }
       return result;
     }
@@ -781,7 +794,7 @@ export async function routeToolCall(
     // sync is skipped or unavailable). The graph field runs in both modes.
     const result = await tool.action(client, restArgs);
     if (!result.isError) {
-      return withGraphField(result, graph.name);
+      return withGraphField(result, echoedGraph);
     }
     return result;
   } catch (error) {
