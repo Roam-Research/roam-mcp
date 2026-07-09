@@ -163,9 +163,22 @@ export function defineStandaloneTool<T extends z.ZodRawShape>(
   };
 }
 
-// Note appended to all client tool descriptions
+// Note appended to all client tool descriptions. Firm + "applies to reads too":
+// agents (e.g. Claude in tool-search mode) otherwise rationalize reads as exempt
+// ("guidelines matter most for writes").
 const GUIDELINES_NOTE =
-  "\n\n(If you haven't fetched this graph's guidelines yet, call get_graph_guidelines — they may change how to handle this operation.)";
+  "\n\nIMPORTANT: unless you've already called get_graph_guidelines for the target graph this session, call it before using this tool — including for reads. The user's conventions change how to interpret and present results, not just how to write.";
+
+// Default MCP server `instructions` (orientation block). Shared by the stdio server
+// (packages/mcp) and the hosted server — the latter may override it per client
+// (e.g. a gentler variant for ChatGPT, which over-orients on the "even for reads"
+// language). "Always … before your first read or write" reliably triggers
+// orientation; "exactly once … don't call it again" prevents an over-orientation loop.
+export const DEFAULT_MCP_INSTRUCTIONS =
+  "This server exposes tools for a user's Roam Research graph(s).\n" +
+  "Before you read or write anything in a graph this session, orient yourself:\n" +
+  "1. If you don't already know which graph to use, call list_graphs and pick the right one.\n" +
+  "2. Always call get_graph_guidelines for that graph before your first read or write — including simple reads. The user's conventions change how to interpret and present what you read, not just how you write, and whether a task looks 'straightforward' is itself something the guidelines may determine; skipping this risks misreading the user's setup. Call it exactly once per graph: after that one call, don't call it again for that graph; just proceed.";
 
 // ----------------------------------------------------------------------------
 // Annotation presets (MCP tools/list hints), applied inline at each defineTool
@@ -241,7 +254,8 @@ const UPLOAD: ToolAnnotations = { ...APPEND, openWorldHint: true };
 // expand-contract (add new field → wait out the cache → drop the old). See the
 // chatgpt-mcp-annotations-and-tool-cache finding. NOTE: .optional() accepts
 // absent/undefined but REJECTS null — a declared field whose producer can emit
-// null needs .nullable(). `graph` is injected by withGraphField (canonical name).
+// null needs .nullable(). `graph` is injected by withGraphField (echoed caller
+// identifier, or canonical name when none passed).
 // ----------------------------------------------------------------------------
 const SuccessOutput = z
   .object({ success: z.boolean().optional(), graph: z.string().optional() })
@@ -257,7 +271,7 @@ const UidsOutput = z
 export const dataTools: ClientToolDefinition[] = [
   defineTool(
     "get_graph_guidelines",
-    "Returns this graph's agent-facing setup: naming conventions, structural preferences, orientation actions, and any constraints the user has explicitly recorded for AI agents. Call once per graph per session before reading or writing content — skipping it means operating on assumptions the user has already overridden, so your work will likely need to be redone. The `nextSteps` field in the response lists orientation actions to take before proceeding.",
+    "Returns the user's setup for this graph: naming conventions, structural/display preferences, orientation actions, and any constraints they've recorded for AI agents. Call once per graph per session before your first read or write — including simple reads, since the conventions change how to interpret and present what you read, not just how you write; skipping risks operating on assumptions the user has already overridden. The `nextSteps` field lists what to do next.",
     GetGuidelinesSchema,
     getGuidelines,
     { title: "Get graph guidelines", annotations: READ },
@@ -398,6 +412,28 @@ export const dataTools: ClientToolDefinition[] = [
   ),
 ];
 
+export interface GetDataToolsOptions {
+  /** Drop the trailing get_graph_guidelines nudge (GUIDELINES_NOTE) from each
+   *  data-tool description in tools/list. Descriptions only — no behavior
+   *  change. Default: false. */
+  omitGuidelinesNoteSuffix?: boolean;
+}
+
+/** Data tools for tools/list registration. Returns the shared `dataTools` array
+ *  unchanged by default; with `omitGuidelinesNoteSuffix`, returns a fresh array
+ *  of fresh objects with the trailing GUIDELINES_NOTE stripped. Never mutates
+ *  the shared `dataTools`. The `endsWith` guard is self-correcting: tools that
+ *  never carried the note pass through untouched, and the strip can't drift from
+ *  what was appended. */
+export function getDataTools(opts: GetDataToolsOptions = {}): ClientToolDefinition[] {
+  if (!opts.omitGuidelinesNoteSuffix) return dataTools;
+  return dataTools.map((t) =>
+    t.description.endsWith(GUIDELINES_NOTE)
+      ? { ...t, description: t.description.slice(0, -GUIDELINES_NOTE.length) }
+      : t,
+  );
+}
+
 // Desktop UI Tools (require local Roam Desktop — file ops + window/selection introspection;
 // hosted MCP omits these because the parameters/effects assume a local environment).
 export const desktopUiTools: ClientToolDefinition[] = [
@@ -485,18 +521,21 @@ export function stripUndeclaredStructuredContent(
 /**
  * Carry the resolved graph identity as a structured `graph` field rather than a
  * "Roam graph: <name>" text prefix (which read as block content and made a read's
- * JSON text non-parseable). Injects the canonical graph name into
- * structuredContent (write tools) and into content[0].text when it parses to a
- * plain JSON object (the only channel for content-only reads). Bare arrays/scalars
- * (datalog raw text), images, non-JSON prose, and isError results are left
- * untouched. Mirrors enrichResultWithTokenInfo's parse-and-rewrite.
+ * JSON text non-parseable). Injects a field named `graph`, valued from the
+ * `graphLabel` argument, into structuredContent (write tools) and into
+ * content[0].text when it parses to a plain JSON object (the only channel for
+ * content-only reads). Bare arrays/scalars (datalog raw text), images, non-JSON
+ * prose, and isError results are left untouched. `graphLabel` is the identifier
+ * the caller passed (echoed, see routeToolCall), or the canonical name when none
+ * was passed; either way it overwrites any `graph` key the backend included, so a
+ * backend cannot spoof it. Mirrors enrichResultWithTokenInfo's parse-and-rewrite.
  */
-function withGraphField(result: CallToolResult, graphName: string): CallToolResult {
+function withGraphField(result: CallToolResult, graphLabel: string): CallToolResult {
   let out = result;
   const sc = result.structuredContent;
   if (sc && typeof sc === "object" && !Array.isArray(sc)) {
-    // canonical resolved graph wins over any `graph` key the backend included
-    out = { ...out, structuredContent: { ...(sc as Record<string, unknown>), graph: graphName } };
+    // the resolved graph identifier wins over any `graph` key the backend included
+    out = { ...out, structuredContent: { ...(sc as Record<string, unknown>), graph: graphLabel } };
   }
   const first = out.content?.[0];
   if (first && first.type === "text") {
@@ -506,7 +545,7 @@ function withGraphField(result: CallToolResult, graphName: string): CallToolResu
         out = {
           ...out,
           content: [
-            { ...first, text: JSON.stringify({ ...parsed, graph: graphName }, null, 2) },
+            { ...first, text: JSON.stringify({ ...parsed, graph: graphLabel }, null, 2) },
             ...out.content.slice(1),
           ],
         };
@@ -650,6 +689,25 @@ export async function routeToolCall(
     const graph = await options.resolveGraph(graphArg as string | undefined);
     const client = await options.createClient(graph);
 
+    // The injected `graph` field echoes the identifier the CALLER passed (nickname or name),
+    // falling back to the canonical resolved name when they passed none (single-graph auto-select).
+    // This lets an agent match a graph it referenced by nickname against the result and honor a
+    // per-graph directive — notably get_graph_guidelines' "call once per graph, then do NOT call
+    // again": ChatGPT looped because the result named only the canonical graph, never the nickname it
+    // had used. The echoed value is client-supplied input already resolved to a real grant, and
+    // withGraphField still overwrites any backend-supplied `graph`, so this is not a spoof vector.
+    //
+    // TODO(local transport): the echo was designed for the hosted/remote MCP, where an agent
+    // addresses a graph by one identifier for a whole session. It fits the local transport less
+    // well. `resolveGraph` there auto-selects when exactly one graph is configured, so a caller
+    // that omits `graph` gets the canonical name back while a later call passing the nickname
+    // gets the nickname — one graph, two labels in one session, which is the confusion this
+    // change set out to remove. Write results also no longer carry the canonical graph they
+    // landed in. Revisit: either gate the echo per transport, or (preferred) emit a canonical
+    // `graphName` alongside the echoed `graph`. The latter is additive — the write outputSchemas
+    // are .passthrough() with all-optional fields — so it satisfies both directions at once.
+    const echoedGraph = typeof graphArg === "string" && graphArg.length > 0 ? graphArg : graph.name;
+
     // Special handling for get_graph_guidelines: sync token info in parallel.
     // Only fires in local-sync mode AND when the client implements getTokenInfo.
     // Bind early so TS narrows the optional method through the truthy check.
@@ -703,7 +761,7 @@ export async function routeToolCall(
       if (tokenInfoResult.status === "active") {
         const info = tokenInfoResult.info;
         // Validate access level before writing to prevent status corruption
-        const validLevels: AccessLevel[] = ["read-only", "read-append", "full"];
+        const validLevels: AccessLevel[] = ["read-only", "read-append", "read-edit-own", "full"];
         const level = validLevels.includes(info.grantedAccessLevel as AccessLevel)
           ? (info.grantedAccessLevel as AccessLevel)
           : undefined;
@@ -723,7 +781,7 @@ export async function routeToolCall(
 
         if (!result.isError) {
           const enriched = enrichResultWithTokenInfo(result, info);
-          return withGraphField(enriched, resolvedGraph.name);
+          return withGraphField(enriched, echoedGraph);
         }
         return result;
       }
@@ -737,7 +795,7 @@ export async function routeToolCall(
         }
       }
       if (!result.isError) {
-        return withGraphField(result, resolvedGraph.name);
+        return withGraphField(result, echoedGraph);
       }
       return result;
     }
@@ -746,7 +804,7 @@ export async function routeToolCall(
     // sync is skipped or unavailable). The graph field runs in both modes.
     const result = await tool.action(client, restArgs);
     if (!result.isError) {
-      return withGraphField(result, graph.name);
+      return withGraphField(result, echoedGraph);
     }
     return result;
   } catch (error) {

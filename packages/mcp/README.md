@@ -45,6 +45,8 @@ npx @roam-research/roam-mcp connect --graph my-graph-name --nickname "My Team Gr
 | `--public`               | —                       | Public graph (read-only, hosted)             |
 | `--type <type>`          | `hosted`                | `hosted` or `offline`                        |
 
+`--access-level` asks Roam for a permission tier; Roam decides what to actually grant and the result is recorded in `~/.roam-tools.json`. The MCP server does not enforce it — editing that value by hand does not change what an agent can do.
+
 To remove a connection:
 
 ```bash

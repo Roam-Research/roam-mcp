@@ -1,5 +1,128 @@
 # Changelog
 
+## 0.8.1 - 2026-07-09
+
+_No runtime change: `core`'s `dist` is byte-identical to `core@0.8.0` once comments are stripped._
+
+- **Publishes `local`, `mcp`, and `cli` at `0.8.1`.** `core` shipped `0.7.5` and `0.8.0`
+  on its own (for the hosted MCP); the other three stayed at `0.7.4` and never carried
+  those changes. Upgrading `roam-mcp` / `roam-cli` from `0.7.4` therefore picks up both
+  the `0.7.5` `nextSteps` copy and the `0.8.0` `graph`-echo behavior at once. `core@0.8.1`
+  is a comment-only republish so all four packages line up again. The hosted MCP pins
+  `^0.8.0`, so `core@0.8.1` **does** reach it automatically and unreviewed — safe here
+  because nothing but comments changed, but the usual patch discipline (`docs/architecture.md` §6)
+  applies to every `0.8.x` from now on.
+- **Neutralized internal infrastructure names in core's source comments** (`operations/pages.ts`,
+  `types.ts`) and in this changelog, per `docs/architecture.md` §8.1. The `pages.ts` comment
+  compiled into `dist/` and was therefore shipped inside the published `core@0.7.5`/`0.8.0`
+  tarballs; `0.8.1` stops it shipping forward.
+- **Docs & tests only, otherwise.** Corrected `withGraphField`'s docstring (it injects a
+  field named `graph`, valued from its `graphLabel` argument — there is no `graphLabel`
+  key on the wire); refreshed the stale `AccessLevel` and caret-range references in
+  `docs/architecture.md`; recorded the `publish:all` non-idempotency in `CLAUDE.md`; and
+  added tests pinning `read-edit-own` (schema + `validLevels` guard) and the echoed
+  `graph` in a write tool's `structuredContent`.
+- **Known gap, tracked in a `TODO(local transport)` at the echo site.** The `0.8.0` echo
+  suits the hosted MCP but fits the local transport less well: `resolveGraph` auto-selects
+  when exactly one graph is configured, so a caller that omits `graph` gets the canonical
+  name back while a later call passing the nickname gets the nickname — one graph, two
+  labels in one session. Write results also no longer carry the canonical graph they
+  landed in. Likely fix is an additive canonical `graphName` alongside `graph`.
+
+## 0.8.0 - 2026-06-19
+
+_Minor bump (not a patch): this changes `withGraphField`'s observable output. Per
+`docs/architecture.md` §6, a change to the injected `graph` field is a dispatch-contract
+change and is not patch-eligible — the caret-pinned hosted MCP must opt into `^0.8.x`
+deliberately rather than inherit it automatically._
+
+- **The injected `graph` field now echoes the identifier the caller passed** (the
+  nickname or name in the tool call's `graph` arg) instead of always the canonical
+  resolved name. It falls back to the canonical name when no `graph` arg is passed
+  (single-graph auto-select). This completes the `get_graph_guidelines`
+  over-orientation fix from 0.7.5: ChatGPT looped because it called the tool by a
+  nickname (e.g. "work graph"), but the result, which the "do NOT call again for this
+  graph" directive points at, named only the canonical graph (e.g. "chatgpt-mcp-main"),
+  so the agent could never tell it had already oriented the graph it knew by that
+  nickname. Echoing the caller's own identifier lets it match. Applies to every tool
+  and both transports (local and hosted). The value stays a string (no `outputSchema`
+  change; write tools' optional `graph` field still validates) and still overwrites any
+  backend-supplied `graph`, so it is not a spoof vector. No consumer reads the field
+  programmatically; only the agent does.
+- **`roam-cli` inherits this too**, since it dispatches through the same `routeToolCall`
+  and prints the result body verbatim: `roam get-page --graph work` now reports
+  `"graph": "work"` rather than the canonical graph name. Note that `0.8.0` was published
+  for `core` only — the CLI and MCP server pick this change up in `0.8.1`.
+
+## 0.7.5 - 2026-06-14
+
+- **`get_graph_guidelines` `nextSteps` now leads with an explicit "stop orienting"
+  directive**, to counter ChatGPT's over-orientation loop (observed re-calling
+  `get_graph_guidelines` ~20× in one turn before doing the task, even on a fresh
+  connector — so not a cache issue). `nextSteps` now opens with "You now have this
+  graph's guidelines … Do NOT call get_graph_guidelines again for this graph this
+  session" before the existing read-the-daily-note guidance, so an agent re-reading
+  the result mid-loop sees the stop in the response body itself, not only in the
+  tool description. Copy-only; no schema or behavior change, and it helps every
+  client. (The hosted MCP's ChatGPT profile separately drops the "before your first
+  read" trigger from its gentler instructions/description; this core change is the
+  belt-and-suspenders.)
+
+## 0.7.4 - 2026-06-13
+
+- **Add `read-edit-own` to the `AccessLevel` type** (read + append + edit/delete only the agent's own
+  content). Additive and runtime-safe: a new union member, with existing values and behavior unchanged,
+  the local `connect` CLI's hardcoded level list untouched, and `accessLevel` still carried (not enforced)
+  in core. Shipped as a patch so `^0.7.x` consumers (the caret-pinned hosted MCP) pick it up automatically.
+  Also accepted by the `GraphConfigSchema` `accessLevel` enum and the `validLevels` token-info status
+  check. The tier is enforced server-side in the remote/hosted MCP; the local Desktop API tier
+  is deferred (the local API exposes the full `roamAlphaAPI` surface, not the hosted MCP's closed allowlist).
+
+## 0.7.3 - 2026-06-13
+
+- **Orientation copy: firm "applies to reads too", as the default — with a per-client escape
+  hatch.** Live testing showed Claude (especially in tool-search mode) skipping
+  `get_graph_guidelines` on reads — rationalizing them as exempt ("guidelines matter most for
+  writes") — after 0.7.2 softened the copy to calm ChatGPT's over-orientation loop. ChatGPT and
+  Claude want opposite copy, so the firm version is now the default and ChatGPT is the exception:
+  - The `get_graph_guidelines` description and the per-tool `GUIDELINES_NOTE` nudge are firm and
+    explicitly cover reads ("including simple reads / for reads"; the user's conventions change how
+    to _interpret and present_ what you read, not just how you write). Dropped 0.7.1's "preferences,
+    not commands" framing, which had downgraded guidelines to optional.
+  - New export **`DEFAULT_MCP_INSTRUCTIONS`** — the shared server `instructions` orientation block,
+    used by the stdio server and as the hosted server's default. The hosted (remote) server
+    overrides it with a gentler variant for ChatGPT, which over-orients on the "even for reads"
+    language. Descriptions/instructions only; no behavior change.
+
+## 0.7.2 - 2026-06-13
+
+- **`get_graph_guidelines` description reworked.** Replaced the 0.7.1 "hardening" sentence — which
+  framed guidelines via the system/developer/user instruction hierarchy and, in practice, sent
+  high-reasoning agents off on a "where's the developer message?" tangent — with a lighter hint:
+  guidelines are the user's preferences for _how_ to carry out a request, guidance to respect, not
+  commands that override what the user actually asked. Also dropped the "your work will likely need
+  to be redone" pressure. Descriptions only; no behavior change.
+- **Softened the server `instructions`.** The orientation block no longer says "do this even for
+  simple reads / skipping risks violating your setup"; it now says to call `get_graph_guidelines`
+  **once per graph, then proceed — don't call it again** for that graph. Counters an observed
+  over-orientation loop (a high-reasoning client re-calling `get_graph_guidelines` dozens of times in
+  one turn). Mirrored in the hosted MCP server.
+
+## 0.7.1 - 2026-06-13
+
+- **`get_graph_guidelines` description hardened.** Added a sentence clarifying that a graph's
+  guidelines are user-authored _data_, not instructions to the agent: they express the user's
+  preferences for how to apply a request and never override system, developer, or user
+  instructions. Scopes the authority of graph-stored guideline text (relevant for shared graphs)
+  without changing any behavior.
+- **New `core` export: `getDataTools(options)` + `GetDataToolsOptions`.** A factory for `tools/list`
+  registration. By default it returns the shared `dataTools` array unchanged; with
+  `omitGuidelinesNoteSuffix: true` it returns a fresh array with the trailing
+  "call get_graph_guidelines" nudge stripped from each data-tool description (descriptions only —
+  no behavior, schema, or annotation change). Lets a hosted transport (e.g. ChatGPT) drop the
+  orientation nudge per-profile while local CLI/MCP keep it. Additive and opt-in: `dataTools`,
+  `contentTools`, and all existing exports are unchanged.
+
 ## 0.7.0 - 2026-06-03
 
 - Added a new tool **`append_to_daily_note`** — a quick-capture tool for adding markdown to a daily

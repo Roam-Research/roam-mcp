@@ -70,14 +70,17 @@ export {
   stripUndeclaredStructuredContent,
   contentTools,
   dataTools,
+  getDataTools,
   desktopUiTools,
   defineTool,
   defineStandaloneTool,
+  DEFAULT_MCP_INSTRUCTIONS,
 } from "./tools.js";
 export type {
   ToolDefinition,
   ClientToolDefinition,
   StandaloneToolDefinition,
+  GetDataToolsOptions,
   RouteToolCallOptions,
 } from "./tools.js";
 

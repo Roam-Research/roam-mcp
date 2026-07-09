@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { routeToolCall } from "../src/tools.js";
+import { findTool, routeToolCall } from "../src/tools.js";
 
 // Core's routeToolCall has no defaults — it requires resolveGraph + createClient
 // in every call. These tests verify the contract that hosted MCP transports
@@ -34,7 +34,7 @@ describe("routeToolCall — injection contract", () => {
                   uid: "abc",
                   markdown: "fake markdown content",
                   queriedAt: "2026-01-01T00:00:00Z",
-                  // a backend-provided `graph` must NOT win over the canonical resolved name
+                  // a backend-provided `graph` must NOT win over the caller's echoed identifier
                   graph: "spoofed",
                 },
               };
@@ -52,9 +52,62 @@ describe("routeToolCall — injection contract", () => {
     const first = result.content[0];
     expect(first.type).toBe("text");
     const text = (first as { text: string }).text;
-    // canonical resolved name wins over the backend's `graph: "spoofed"`
-    expect(JSON.parse(text).graph).toBe("test-graph");
+    // the caller's identifier ("test", a nickname here) is echoed, and wins over `graph: "spoofed"`
+    expect(JSON.parse(text).graph).toBe("test");
     expect(text).toContain("fake markdown content");
+  });
+
+  it("falls back to the canonical resolved name when the caller passes no graph arg", async () => {
+    const result = await routeToolCall(
+      "get_page",
+      { uid: "abc" }, // no graph arg — nothing to echo
+      {
+        resolveGraph: async () => ({ name: "only-graph", type: "hosted", nickname: "only" }),
+        createClient: () => ({
+          call: async () => ({
+            success: true,
+            result: { uid: "abc", markdown: "body" },
+          }),
+        }),
+        tokenInfoMode: "skip",
+      },
+    );
+
+    const text = (result.content[0] as { text: string }).text;
+    // no caller identifier to echo, so the canonical resolved name is used
+    expect(JSON.parse(text).graph).toBe("only-graph");
+  });
+
+  // structuredContent is a separate branch of withGraphField from the text
+  // channel covered above, and it is the channel a schema-validating client
+  // (e.g. ChatGPT) checks against its cached tools/list. An echoed nickname
+  // must land there AND still satisfy the tool's declared outputSchema.
+  it("echoes into a write tool's structuredContent without breaking its outputSchema", async () => {
+    const result = await routeToolCall(
+      "create_page",
+      { title: "Notes", markdown: "hi", graph: "work" },
+      {
+        resolveGraph: async () => ({ name: "acme-corp-notes", type: "hosted", nickname: "work" }),
+        createClient: () => ({
+          // the backend's own `graph` must lose here too, not just in the text body
+          call: async () => ({ success: true, result: { uid: "page-1", graph: "spoofed" } }),
+        }),
+        tokenInfoMode: "skip",
+      },
+    );
+
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({ uid: "page-1", graph: "work" });
+
+    // Assert on `.data`, not just `.success`: `.success` never inspects the payload, so
+    // on its own it would not show that `graph` is present in the validated output. (It
+    // survives because `graph` is a declared key on the preset, not because of
+    // `.passthrough()` — unknown-key survival is pinned in tool-output-schema.test.ts.)
+    const tool = findTool("create_page");
+    expect(tool?.outputSchema).toBeDefined();
+    const validated = tool!.outputSchema!.safeParse(result.structuredContent);
+    expect(validated.success).toBe(true);
+    expect(validated.success && validated.data).toMatchObject({ uid: "page-1", graph: "work" });
   });
 });
 
@@ -95,10 +148,10 @@ describe("routeToolCall — get_graph_guidelines with tokenInfoMode: 'skip'", ()
     // Side flow was skipped
     expect(getTokenInfoSpy).not.toHaveBeenCalled();
     expect(onTokenStatusUpdate).not.toHaveBeenCalled();
-    // graph field still applies (documented behavior)
+    // graph field still applies (documented behavior), echoing the caller's identifier
     expect(result.isError).toBeFalsy();
     const text = (result.content[0] as { text: string }).text;
-    expect(JSON.parse(text).graph).toBe("test-graph");
+    expect(JSON.parse(text).graph).toBe("test");
     expect(text).toContain("do nice things");
   });
 });
