@@ -56,6 +56,22 @@ All four workspace packages release in lockstep via `npm run publish:all`:
 - `@roam-research/roam-mcp`
 - `@roam-research/roam-cli`
 
+**Lockstep is the default, not an invariant.** `core` is also consumed directly by
+the hosted MCP (a separate, private repo), so it is sometimes published _alone_ to
+get a change to that consumer without cutting a local release — `core@0.7.5` and
+`core@0.8.0` both shipped this way, while `local`/`mcp`/`cli` stayed at `0.7.4`.
+This is safe for end users because `bump-version.mjs` writes **exact** sibling
+pins: `roam-mcp@0.7.4 → roam-tools-local@0.7.4 → roam-tools-core@0.7.4` resolves as
+a coherent tree no matter what newer `core` versions exist on npm.
+
+**`publish:all` is not idempotent.** It is an `&&` chain with `core` first, so if
+`core@X` is already on the registry, `npm publish -w packages/core` returns E403 and
+the chain dies _before_ `local`/`mcp`/`cli` are reached — the script cannot be used
+to let the others catch up. To reconcile after a solo `core` publish, either bump all
+four to the next patch (preferred: `publish:all` then runs clean end-to-end) or
+publish `local` → `mcp` → `cli` individually, in that order, since `mcp` and `cli`
+pin `local` exactly and it must land first.
+
 **Maintainer obligation:** the `bump-version.mjs` script writes exact sibling
 dependency strings (no semver ranges). Do not change this — lockstep publishing
 depends on it. If a future PR introduces caret/tilde dep ranges between

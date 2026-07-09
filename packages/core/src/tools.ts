@@ -521,14 +521,14 @@ export function stripUndeclaredStructuredContent(
 /**
  * Carry the resolved graph identity as a structured `graph` field rather than a
  * "Roam graph: <name>" text prefix (which read as block content and made a read's
- * JSON text non-parseable). Injects `graphLabel` into structuredContent (write
- * tools) and into content[0].text when it parses to a plain JSON object (the only
- * channel for content-only reads). Bare arrays/scalars (datalog raw text), images,
- * non-JSON prose, and isError results are left untouched. `graphLabel` is the
- * identifier the caller passed (echoed, see routeToolCall), or the canonical name
- * when none was passed; either way it overwrites any `graph` key the backend
- * included, so a backend cannot spoof it. Mirrors enrichResultWithTokenInfo's
- * parse-and-rewrite.
+ * JSON text non-parseable). Injects a field named `graph`, valued from the
+ * `graphLabel` argument, into structuredContent (write tools) and into
+ * content[0].text when it parses to a plain JSON object (the only channel for
+ * content-only reads). Bare arrays/scalars (datalog raw text), images, non-JSON
+ * prose, and isError results are left untouched. `graphLabel` is the identifier
+ * the caller passed (echoed, see routeToolCall), or the canonical name when none
+ * was passed; either way it overwrites any `graph` key the backend included, so a
+ * backend cannot spoof it. Mirrors enrichResultWithTokenInfo's parse-and-rewrite.
  */
 function withGraphField(result: CallToolResult, graphLabel: string): CallToolResult {
   let out = result;
@@ -696,6 +696,16 @@ export async function routeToolCall(
     // again": ChatGPT looped because the result named only the canonical graph, never the nickname it
     // had used. The echoed value is client-supplied input already resolved to a real grant, and
     // withGraphField still overwrites any backend-supplied `graph`, so this is not a spoof vector.
+    //
+    // TODO(local transport): the echo was designed for the hosted/remote MCP, where an agent
+    // addresses a graph by one identifier for a whole session. It fits the local transport less
+    // well. `resolveGraph` there auto-selects when exactly one graph is configured, so a caller
+    // that omits `graph` gets the canonical name back while a later call passing the nickname
+    // gets the nickname — one graph, two labels in one session, which is the confusion this
+    // change set out to remove. Write results also no longer carry the canonical graph they
+    // landed in. Revisit: either gate the echo per transport, or (preferred) emit a canonical
+    // `graphName` alongside the echoed `graph`. The latter is additive — the write outputSchemas
+    // are .passthrough() with all-optional fields — so it satisfies both directions at once.
     const echoedGraph = typeof graphArg === "string" && graphArg.length > 0 ? graphArg : graph.name;
 
     // Special handling for get_graph_guidelines: sync token info in parallel.

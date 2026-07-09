@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { routeToolCall } from "../src/tools.js";
+import { findTool, routeToolCall } from "../src/tools.js";
 
 // Core's routeToolCall has no defaults — it requires resolveGraph + createClient
 // in every call. These tests verify the contract that hosted MCP transports
@@ -76,6 +76,32 @@ describe("routeToolCall — injection contract", () => {
     const text = (result.content[0] as { text: string }).text;
     // no caller identifier to echo, so the canonical resolved name is used
     expect(JSON.parse(text).graph).toBe("only-graph");
+  });
+
+  // structuredContent is a separate branch of withGraphField from the text
+  // channel covered above, and it is the channel a schema-validating client
+  // (e.g. ChatGPT) checks against its cached tools/list. An echoed nickname
+  // must land there AND still satisfy the tool's declared outputSchema.
+  it("echoes into a write tool's structuredContent without breaking its outputSchema", async () => {
+    const result = await routeToolCall(
+      "create_page",
+      { title: "Notes", markdown: "hi", graph: "work" },
+      {
+        resolveGraph: async () => ({ name: "acme-corp-notes", type: "hosted", nickname: "work" }),
+        createClient: () => ({
+          // the backend's own `graph` must lose here too, not just in the text body
+          call: async () => ({ success: true, result: { uid: "page-1", graph: "spoofed" } }),
+        }),
+        tokenInfoMode: "skip",
+      },
+    );
+
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({ uid: "page-1", graph: "work" });
+
+    const tool = findTool("create_page");
+    expect(tool?.outputSchema).toBeDefined();
+    expect(tool!.outputSchema!.safeParse(result.structuredContent).success).toBe(true);
   });
 });
 

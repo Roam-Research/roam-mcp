@@ -130,13 +130,13 @@ Instead of using `connect`, you can manually create `~/.roam-tools.json`:
 
 To create a token manually: Roam Desktop → Settings → Graph → Local API Tokens → New Token.
 
-| Field         | Required | Description                                                       |
-| ------------- | -------- | ----------------------------------------------------------------- |
-| `name`        | Yes      | The actual graph name in Roam (as shown in the URL)               |
-| `type`        | No       | `"hosted"` (default) for cloud graphs, `"offline"` for local-only |
-| `token`       | Yes      | Local API token from Roam settings                                |
-| `nickname`    | Yes      | Slug identifier for this graph (lowercase, hyphens, no spaces)    |
-| `accessLevel` | No       | `"full"` (default), `"read-only"`, or `"read-append"`             |
+| Field         | Required | Description                                                              |
+| ------------- | -------- | ------------------------------------------------------------------------ |
+| `name`        | Yes      | The actual graph name in Roam (as shown in the URL)                      |
+| `type`        | No       | `"hosted"` (default) for cloud graphs, `"offline"` for local-only        |
+| `token`       | Yes      | Local API token from Roam settings                                       |
+| `nickname`    | Yes      | Slug identifier for this graph (lowercase, hyphens, no spaces)           |
+| `accessLevel` | No       | `"full"` (default), `"read-only"`, `"read-append"`, or `"read-edit-own"` |
 
 ## Available Tools
 

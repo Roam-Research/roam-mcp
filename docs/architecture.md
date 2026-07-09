@@ -67,7 +67,7 @@ interface ToolGraph {
   name: string; // canonical graph name (the transport uses this to address the graph)
   type: GraphType; // "hosted" | "offline"
   nickname: string; // local-sync token-status update key (since 0.8.0 the result's `graph` field echoes the caller's `graph` arg — nickname or name — or the canonical name when none was passed)
-  accessLevel?: AccessLevel; // "read-only" | "read-append" | "full"
+  accessLevel?: AccessLevel; // "read-only" | "read-append" | "read-edit-own" | "full"
   token?: string; // local-only; a hosted resolver omits it
 }
 
@@ -151,9 +151,9 @@ The hosted MCP server lives in a separate, private repo and is **not** in this t
 - Injects its **own** `resolveGraph` (backed by its own grant store, not `~/.roam-tools.json`) and its **own** client (its own auth, not a local token).
 - Passes `tokenInfoMode: "skip"` and does **not** implement `getTokenInfo` — so the `get_graph_guidelines` side flow never fires.
 - Authors its **own** `list_graphs` / `setup_new_graph` standalone tools and registers them directly with the MCP SDK. (They can't go through `routeToolCall`, which throws on standalone tools.)
-- Pins core with a **caret range** (`^0.6.x`).
+- Pins core with a **caret range** on core's current minor (`^0.7.x` as of core `0.8.0`; widening to `^0.8.x` is a deliberate opt-in on their side).
 
-That caret is the crux of §6: anything we ship in a `0.6.x` patch reaches the hosted server automatically.
+That caret is the crux of §6: anything we ship in a **patch of the pinned minor** reaches the hosted server automatically. A new minor does not — it waits until they widen the range.
 
 ---
 
@@ -175,7 +175,7 @@ Real, intentional differences. Keep them in mind when reasoning about behavior o
 
 ## 6. How to change this repo without breaking the remote MCP
 
-**The load-bearing fact:** the hosted consumer pins core with a **caret** (`^0.6.x`). So **any `0.6.x` patch we publish reaches it automatically, with no review on their side.** SemVer discipline on `core` is therefore a safety mechanism, not a formality.
+**The load-bearing fact:** the hosted consumer pins core with a **caret** on core's current minor (`^0.7.x` as of core `0.8.0`). So **any patch we publish within that minor reaches it automatically, with no review on their side.** A minor bump does not reach it until they widen the range. SemVer discipline on `core` is therefore a safety mechanism, not a formality.
 
 ### What each bump level is allowed to contain
 
@@ -214,8 +214,8 @@ Real, intentional differences. Keep them in mind when reasoning about behavior o
 ## 8. Open questions (feedback welcome)
 
 1. **Internal infra references in committed core (resolved).** Core's source comments and the published package READMEs previously named the hosted backend's internal infrastructure; these have been neutralized to transport-agnostic descriptions so the open-source repo stays clean.
-2. **No automated guard on the contract.** Nothing today stops a `0.6.x` patch from breaking the caret-pinned hosted consumer. Worth adding a public-surface snapshot test (e.g. a checked-in `index.d.ts` snapshot, or an api-extractor report) that fails CI on an unintended surface change?
+2. **No automated guard on the contract.** Nothing today stops a patch from breaking the caret-pinned hosted consumer. Worth adding a public-surface snapshot test (e.g. a checked-in `index.d.ts` snapshot, or an api-extractor report) that fails CI on an unintended surface change?
 3. **Documented SemVer policy.** Should `core`'s README / `package.json` state the patch/minor/major policy from §6 explicitly, so _all_ consumers (not just the hosted one) know what a caret range buys them?
-4. **Caret vs exact on the hosted side.** The hosted consumer pins `^0.6.x`, so patches land unreviewed. Keep the caret and rely on strict patch discipline, or ask the hosted side to pin exact and adopt deliberately?
+4. **Caret vs exact on the hosted side.** The hosted consumer pins a caret range, so patches land unreviewed. Keep the caret and rely on strict patch discipline, or ask the hosted side to pin exact and adopt deliberately?
 5. **Terminology.** Is "the hosted MCP / hosted transport (a separate, private repo)" the right abstract label to use throughout, or do you have a preferred non-sensitive name?
 6. **`EXPECTED_API_VERSION` coupling.** Anything this doc should say about whether/where the hosted path enforces the version field — without reaching into backend specifics?

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.8.1 - 2026-07-09
+
+_No runtime change: `core`'s `dist` is byte-identical to `core@0.8.0` once comments are stripped._
+
+- **Publishes `local`, `mcp`, and `cli` at `0.8.1`.** `core` shipped `0.7.5` and `0.8.0`
+  on its own (for the hosted MCP); the other three stayed at `0.7.4` and never carried
+  those changes. Upgrading `roam-mcp` / `roam-cli` from `0.7.4` therefore picks up both
+  the `0.7.5` `nextSteps` copy and the `0.8.0` `graph`-echo behavior at once. `core@0.8.1`
+  is a comment-and-docs-only republish so all four packages line up again.
+- **Docs & tests only, otherwise.** Corrected `withGraphField`'s docstring (it injects a
+  field named `graph`, valued from its `graphLabel` argument — there is no `graphLabel`
+  key on the wire); refreshed the stale `AccessLevel` and caret-range references in
+  `docs/architecture.md`; recorded the `publish:all` non-idempotency in `CLAUDE.md`; and
+  added tests pinning `read-edit-own` (schema + `validLevels` guard) and the echoed
+  `graph` in a write tool's `structuredContent`.
+- **Known gap, tracked in a `TODO(local transport)` at the echo site.** The `0.8.0` echo
+  suits the hosted MCP but fits the local transport less well: `resolveGraph` auto-selects
+  when exactly one graph is configured, so a caller that omits `graph` gets the canonical
+  name back while a later call passing the nickname gets the nickname — one graph, two
+  labels in one session. Write results also no longer carry the canonical graph they
+  landed in. Likely fix is an additive canonical `graphName` alongside `graph`.
+
 ## 0.8.0 - 2026-06-19
 
 _Minor bump (not a patch): this changes `withGraphField`'s observable output. Per
@@ -20,6 +42,9 @@ deliberately rather than inherit it automatically._
   change; write tools' optional `graph` field still validates) and still overwrites any
   backend-supplied `graph`, so it is not a spoof vector. No consumer reads the field
   programmatically; only the agent does.
+- **`roam-cli` inherits this too**, since it dispatches through the same `routeToolCall`
+  and prints the result body verbatim: `roam get-page --graph work` now reports
+  `"graph": "work"` rather than the canonical graph name.
 
 ## 0.7.5 - 2026-06-14
 

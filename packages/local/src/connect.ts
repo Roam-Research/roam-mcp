@@ -74,6 +74,10 @@ function getErrorCode(error: TokenExchangeResponse["error"]): string | undefined
 // ============================================================================
 
 export async function connect(options: ConnectOptions = {}): Promise<void> {
+  // Deliberately omits "read-edit-own": it is a real AccessLevel (accepted by
+  // GraphConfigSchema, and written here from the backend's grantedAccessLevel
+  // below) but is enforced server-side by the hosted MCP only, so there is no
+  // point letting a local user *request* it. Not an oversight — don't "fix".
   const VALID_ACCESS_LEVELS = ["full", "read-append", "read-only"];
   const VALID_TYPES = ["hosted", "offline"];
 
