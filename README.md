@@ -130,13 +130,15 @@ Instead of using `connect`, you can manually create `~/.roam-tools.json`:
 
 To create a token manually: Roam Desktop → Settings → Graph → Local API Tokens → New Token.
 
-| Field         | Required | Description                                                              |
-| ------------- | -------- | ------------------------------------------------------------------------ |
-| `name`        | Yes      | The actual graph name in Roam (as shown in the URL)                      |
-| `type`        | No       | `"hosted"` (default) for cloud graphs, `"offline"` for local-only        |
-| `token`       | Yes      | Local API token from Roam settings                                       |
-| `nickname`    | Yes      | Slug identifier for this graph (lowercase, hyphens, no spaces)           |
-| `accessLevel` | No       | `"full"` (default), `"read-only"`, `"read-append"`, or `"read-edit-own"` |
+| Field         | Required | Description                                                       |
+| ------------- | -------- | ----------------------------------------------------------------- |
+| `name`        | Yes      | The actual graph name in Roam (as shown in the URL)               |
+| `type`        | No       | `"hosted"` (default) for cloud graphs, `"offline"` for local-only |
+| `token`       | Yes      | Local API token from Roam settings                                |
+| `nickname`    | Yes      | Slug identifier for this graph (lowercase, hyphens, no spaces)    |
+| `accessLevel` | No       | `"full"` (default), `"read-only"`, or `"read-append"`             |
+
+`accessLevel` records what the token was granted; it is not enforced by the CLI or MCP server — Roam enforces the token's real permissions. Setting it by hand does not change what an agent can do. (A fourth value, `"read-edit-own"`, is accepted by the config schema, and whatever level Roam grants is written to your config verbatim. Roam's local API does not currently grant that tier, so you are unlikely to see it in a locally-created token.)
 
 ## Available Tools
 

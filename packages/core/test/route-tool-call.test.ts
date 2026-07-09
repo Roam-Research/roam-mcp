@@ -99,9 +99,15 @@ describe("routeToolCall — injection contract", () => {
     expect(result.isError).toBeFalsy();
     expect(result.structuredContent).toMatchObject({ uid: "page-1", graph: "work" });
 
+    // Assert on `.data`, not just `.success`: `.success` never inspects the payload, so
+    // on its own it would not show that `graph` is present in the validated output. (It
+    // survives because `graph` is a declared key on the preset, not because of
+    // `.passthrough()` — unknown-key survival is pinned in tool-output-schema.test.ts.)
     const tool = findTool("create_page");
     expect(tool?.outputSchema).toBeDefined();
-    expect(tool!.outputSchema!.safeParse(result.structuredContent).success).toBe(true);
+    const validated = tool!.outputSchema!.safeParse(result.structuredContent);
+    expect(validated.success).toBe(true);
+    expect(validated.success && validated.data).toMatchObject({ uid: "page-1", graph: "work" });
   });
 });
 

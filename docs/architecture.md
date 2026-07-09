@@ -151,7 +151,7 @@ The hosted MCP server lives in a separate, private repo and is **not** in this t
 - Injects its **own** `resolveGraph` (backed by its own grant store, not `~/.roam-tools.json`) and its **own** client (its own auth, not a local token).
 - Passes `tokenInfoMode: "skip"` and does **not** implement `getTokenInfo` — so the `get_graph_guidelines` side flow never fires.
 - Authors its **own** `list_graphs` / `setup_new_graph` standalone tools and registers them directly with the MCP SDK. (They can't go through `routeToolCall`, which throws on standalone tools.)
-- Pins core with a **caret range** on core's current minor (`^0.7.x` as of core `0.8.0`; widening to `^0.8.x` is a deliberate opt-in on their side).
+- Pins core with a **caret range** on core's current minor (`^0.8.0` as of core `0.8.1`; it was `^0.7.0` until they widened it to consume `core@0.8.0`). Each widening is a deliberate opt-in on their side.
 
 That caret is the crux of §6: anything we ship in a **patch of the pinned minor** reaches the hosted server automatically. A new minor does not — it waits until they widen the range.
 
@@ -175,7 +175,7 @@ Real, intentional differences. Keep them in mind when reasoning about behavior o
 
 ## 6. How to change this repo without breaking the remote MCP
 
-**The load-bearing fact:** the hosted consumer pins core with a **caret** on core's current minor (`^0.7.x` as of core `0.8.0`). So **any patch we publish within that minor reaches it automatically, with no review on their side.** A minor bump does not reach it until they widen the range. SemVer discipline on `core` is therefore a safety mechanism, not a formality.
+**The load-bearing fact:** the hosted consumer pins core with a **caret** on core's current minor (`^0.8.0` as of core `0.8.1`). So **any patch we publish within that minor reaches it automatically, with no review on their side** — `core@0.8.1` and every later `0.8.x` land there unreviewed. A minor bump does not reach it until they widen the range. SemVer discipline on `core` is therefore a safety mechanism, not a formality.
 
 ### What each bump level is allowed to contain
 

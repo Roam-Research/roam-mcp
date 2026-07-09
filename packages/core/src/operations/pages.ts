@@ -127,7 +127,8 @@ export async function getGuidelines(client: RoamActionClient): Promise<CallToolR
   const dnpTitle = result.todaysDailyNotePage;
   // Lead with an explicit STOP so an agent re-reading this result mid-loop sees it:
   // orientation is done, do not call get_graph_guidelines again for this graph.
-  // (ChatGPT otherwise re-orients before every read; see functions_ts route-profile.ts.)
+  // (ChatGPT otherwise re-orients before every read; the hosted transport's per-client
+  // route profile carries the matching copy.)
   const stop =
     "You now have this graph's guidelines (the `graph` field below names the graph). Do NOT call get_graph_guidelines again for this graph this session; you already have everything you need. ";
   const nextSteps = dnpTitle

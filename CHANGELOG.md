@@ -8,7 +8,14 @@ _No runtime change: `core`'s `dist` is byte-identical to `core@0.8.0` once comme
   on its own (for the hosted MCP); the other three stayed at `0.7.4` and never carried
   those changes. Upgrading `roam-mcp` / `roam-cli` from `0.7.4` therefore picks up both
   the `0.7.5` `nextSteps` copy and the `0.8.0` `graph`-echo behavior at once. `core@0.8.1`
-  is a comment-and-docs-only republish so all four packages line up again.
+  is a comment-only republish so all four packages line up again. The hosted MCP pins
+  `^0.8.0`, so `core@0.8.1` **does** reach it automatically and unreviewed — safe here
+  because nothing but comments changed, but the usual patch discipline (`docs/architecture.md` §6)
+  applies to every `0.8.x` from now on.
+- **Neutralized internal infrastructure names in core's source comments** (`operations/pages.ts`,
+  `types.ts`) and in this changelog, per `docs/architecture.md` §8.1. The `pages.ts` comment
+  compiled into `dist/` and was therefore shipped inside the published `core@0.7.5`/`0.8.0`
+  tarballs; `0.8.1` stops it shipping forward.
 - **Docs & tests only, otherwise.** Corrected `withGraphField`'s docstring (it injects a
   field named `graph`, valued from its `graphLabel` argument — there is no `graphLabel`
   key on the wire); refreshed the stale `AccessLevel` and caret-range references in
@@ -44,7 +51,8 @@ deliberately rather than inherit it automatically._
   programmatically; only the agent does.
 - **`roam-cli` inherits this too**, since it dispatches through the same `routeToolCall`
   and prints the result body verbatim: `roam get-page --graph work` now reports
-  `"graph": "work"` rather than the canonical graph name.
+  `"graph": "work"` rather than the canonical graph name. Note that `0.8.0` was published
+  for `core` only — the CLI and MCP server pick this change up in `0.8.1`.
 
 ## 0.7.5 - 2026-06-14
 
@@ -56,9 +64,9 @@ deliberately rather than inherit it automatically._
   session" before the existing read-the-daily-note guidance, so an agent re-reading
   the result mid-loop sees the stop in the response body itself, not only in the
   tool description. Copy-only; no schema or behavior change, and it helps every
-  client. (The hosted ChatGPT profile in relemma's `functions_ts` separately drops
-  the "before your first read" trigger from its gentler instructions/description;
-  this core change is the belt-and-suspenders.)
+  client. (The hosted MCP's ChatGPT profile separately drops the "before your first
+  read" trigger from its gentler instructions/description; this core change is the
+  belt-and-suspenders.)
 
 ## 0.7.4 - 2026-06-13
 
@@ -67,7 +75,7 @@ deliberately rather than inherit it automatically._
   the local `connect` CLI's hardcoded level list untouched, and `accessLevel` still carried (not enforced)
   in core. Shipped as a patch so `^0.7.x` consumers (the caret-pinned hosted MCP) pick it up automatically.
   Also accepted by the `GraphConfigSchema` `accessLevel` enum and the `validLevels` token-info status
-  check. The tier is enforced server-side in the remote/hosted MCP (relemma); the local Desktop API tier
+  check. The tier is enforced server-side in the remote/hosted MCP; the local Desktop API tier
   is deferred (the local API exposes the full `roamAlphaAPI` surface, not the hosted MCP's closed allowlist).
 
 ## 0.7.3 - 2026-06-13
