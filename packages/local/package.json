@@ -13,12 +13,10 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "development": "./src/index.ts",
       "import": "./dist/index.js"
     },
     "./connect": {
       "types": "./dist/connect.d.ts",
-      "development": "./src/connect.ts",
       "import": "./dist/connect.js"
     }
   },
