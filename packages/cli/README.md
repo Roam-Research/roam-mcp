@@ -124,8 +124,8 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 
 **Shortcuts:**
 
-- `add-shortcut` - Add a page to the left sidebar Shortcuts (optional `--index` to position it)
-- `remove-shortcut` - Remove a page from the left sidebar Shortcuts
+- `add-shortcut` - Add a page to the left sidebar Shortcuts / starred pages (optional `--index` to position it)
+- `remove-shortcut` - Remove a page from the left sidebar Shortcuts / starred pages
 
 **Files:**
 

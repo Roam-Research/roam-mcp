@@ -486,7 +486,7 @@ export const desktopUiTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "add_shortcut",
-    "Add a page to the left sidebar Shortcuts. Pass `index` to place it at a specific position (0-based); omit to append at the end. Calling again with an index for an already-shortcutted page moves it." +
+    "Add a page to the graph's Shortcuts (a.k.a. starred/pinned pages — the `starredPages` get_graph_guidelines returns). Pass `index` to place it at a specific position (0-based); omit to append at the end. Re-adding an already-shortcutted page with an index moves it." +
       GUIDELINES_NOTE,
     AddShortcutSchema,
     addShortcut,
@@ -494,7 +494,7 @@ export const desktopUiTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "remove_shortcut",
-    "Remove a page from the left sidebar Shortcuts. The page itself is not deleted — only its shortcut entry is removed. No-op if the page isn't shortcutted." +
+    "Remove a page from the graph's Shortcuts (a.k.a. starred/pinned pages — the `starredPages` get_graph_guidelines returns). Only the shortcut entry is removed; the page itself is NOT deleted. No-op if the page isn't shortcutted." +
       GUIDELINES_NOTE,
     RemoveShortcutSchema,
     removeShortcut,
