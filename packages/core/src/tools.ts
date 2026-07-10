@@ -67,6 +67,12 @@ import {
   uploadFile,
   deleteFile,
 } from "./operations/files.js";
+import {
+  AddShortcutSchema,
+  RemoveShortcutSchema,
+  addShortcut,
+  removeShortcut,
+} from "./operations/shortcuts.js";
 
 // Common schema for graph parameter (used by most tools)
 const GraphSchema = z.object({
@@ -236,6 +242,15 @@ const NAV: ToolAnnotations = {
 };
 // file_upload's url path does a server-side fetch of an arbitrary host.
 const UPLOAD: ToolAnnotations = { ...APPEND, openWorldHint: true };
+// Shortcuts persist in the graph (unlike the ephemeral NAV tools), but they change
+// the sidebar shortcut list, not page/block content — so non-destructive, and
+// idempotent (re-adding a page moves it; removing an absent one is a no-op).
+const SHORTCUT: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
 
 // ----------------------------------------------------------------------------
 // Output schemas (MCP tools/list structured-result hints) — WRITE TOOLS ONLY.
@@ -434,8 +449,12 @@ export function getDataTools(opts: GetDataToolsOptions = {}): ClientToolDefiniti
   );
 }
 
-// Desktop UI Tools (require local Roam Desktop — file ops + window/selection introspection;
-// hosted MCP omits these because the parameters/effects assume a local environment).
+// Desktop UI Tools (hosted MCP omits all of these). Most require a local Roam
+// Desktop — file ops + window/selection introspection whose parameters/effects
+// assume a local environment. The two shortcut tools are the exception: they are
+// graph data (transport-neutral client.call), parked here to stay LOCAL-ONLY
+// until the hosted backend is confirmed to expose data.page.addShortcut/
+// removeShortcut — then move them to dataTools. See docs/architecture.md §2d/§6.
 export const desktopUiTools: ClientToolDefinition[] = [
   defineTool(
     "get_open_windows",
@@ -464,6 +483,22 @@ export const desktopUiTools: ClientToolDefinition[] = [
     OpenSidebarSchema,
     openSidebar,
     { title: "Open in sidebar", annotations: { ...NAV, idempotentHint: false } },
+  ),
+  defineTool(
+    "add_shortcut",
+    "Add a page to the left sidebar Shortcuts. Pass `index` to place it at a specific position (0-based); omit to append at the end. Calling again with an index for an already-shortcutted page moves it." +
+      GUIDELINES_NOTE,
+    AddShortcutSchema,
+    addShortcut,
+    { title: "Add shortcut", annotations: SHORTCUT },
+  ),
+  defineTool(
+    "remove_shortcut",
+    "Remove a page from the left sidebar Shortcuts. The page itself is not deleted — only its shortcut entry is removed. No-op if the page isn't shortcutted." +
+      GUIDELINES_NOTE,
+    RemoveShortcutSchema,
+    removeShortcut,
+    { title: "Remove shortcut", annotations: SHORTCUT },
   ),
   defineTool(
     "file_get",

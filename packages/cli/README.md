@@ -122,6 +122,11 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 - `open-main-window` - Navigate to page/block
 - `open-sidebar` - Open in right sidebar
 
+**Shortcuts:**
+
+- `add-shortcut` - Add a page to the left sidebar Shortcuts (optional `--index` to position it)
+- `remove-shortcut` - Remove a page from the left sidebar Shortcuts
+
 **Files:**
 
 - `file-get` - Fetch a file hosted on Roam (handles decryption for encrypted graphs)
