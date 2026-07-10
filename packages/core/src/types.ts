@@ -192,7 +192,7 @@ export const CONFIG_VERSION = 1;
 // - Minor bump on Roam side (e.g. 1.1.x → 1.2.0): MUST bump here too, or all
 //   requests will fail with VERSION_MISMATCH.
 // - This is independent of the npm package version (0.x.y in package.json).
-export const EXPECTED_API_VERSION = "1.1.2";
+export const EXPECTED_API_VERSION = "1.2.0";
 
 // Roam API error structure
 export interface RoamApiError {
