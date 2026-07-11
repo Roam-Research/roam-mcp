@@ -120,6 +120,7 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 **Read:**
 
 - `search` - Search pages/blocks (empty query returns recently edited/viewed content)
+- `semantic_search` - Semantic (embeddings) search by meaning; requires embeddings enabled and a signed-in user
 - `search_templates` - Search Roam templates by name
 - `roam_query` - Execute a Roam query (`{{query:}}` blocks, not Datalog)
 - `datalog_query` - Execute a raw Datalog query against the graph's Datomic database
@@ -147,7 +148,7 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 
 ## Hiding content from the AI
 
-Blocks tagged `#.rm-hide` or `#.rm-private` — and everything nested under them — are omitted from the content these tools return. The read tools that surface graph content to the AI (`get_page`, `get_block`, `get_backlinks`, `search`, `search_templates`, `roam_query`) all skip hidden subtrees. Both the hashtag (`#.rm-hide`) and link (`[[.rm-hide]]`) forms work; `.rm-private` is Roam's existing "hidden from other users" tag, while `.rm-hide` hides from the AI specifically.
+Blocks tagged `#.rm-hide` or `#.rm-private` — and everything nested under them — are omitted from the content these tools return. The read tools that surface graph content to the AI (`get_page`, `get_block`, `get_backlinks`, `search`, `semantic_search`, `search_templates`, `roam_query`) all skip hidden subtrees. Both the hashtag (`#.rm-hide`) and link (`[[.rm-hide]]`) forms work; `.rm-private` is Roam's existing "hidden from other users" tag, while `.rm-hide` hides from the AI specifically.
 
 **This is a convenience filter, not a security guarantee.** The filtering is applied only to the AI content tools above. The raw `datalog_query` tool reads the database directly and does **not** apply it, so a capable agent could still surface hidden blocks through datalog. Don't rely on these tags for anything truly sensitive — treat them as "keep it out of the AI's way," not "keep it secret."
 

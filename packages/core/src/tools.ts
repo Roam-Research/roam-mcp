@@ -44,8 +44,10 @@ import {
 import {
   SearchSchema,
   SearchTemplatesSchema,
+  SemanticSearchSchema,
   search,
   searchTemplates,
+  semanticSearch,
 } from "./operations/search.js";
 import { QuerySchema, query } from "./operations/query.js";
 import { DatalogQuerySchema, datalogQuery } from "./operations/datalog.js";
@@ -451,10 +453,15 @@ export function getDataTools(opts: GetDataToolsOptions = {}): ClientToolDefiniti
 
 // Desktop UI Tools (hosted MCP omits all of these). Most require a local Roam
 // Desktop — file ops + window/selection introspection whose parameters/effects
-// assume a local environment. The two shortcut tools are the exception: they are
-// graph data (transport-neutral client.call), parked here to stay LOCAL-ONLY
-// until the hosted backend is confirmed to expose data.page.addShortcut/
-// removeShortcut — then move them to dataTools. See docs/architecture.md §2d/§6.
+// assume a local environment. A few entries are not Desktop-UI per se but are
+// parked here to stay LOCAL-ONLY:
+//   - add_shortcut/remove_shortcut: graph data, but the hosted backend isn't
+//     confirmed to expose data.page.addShortcut/removeShortcut yet.
+//   - semantic_search: needs the renderer's search worker + embeddings index,
+//     which the hosted MCP backend has no counterpart for (relemma
+//     user_api/ai.cljs get-semantic-search-md-fn is renderer-only).
+// Each is a candidate to move to dataTools once its hosted backend exists. See
+// docs/architecture.md §2d/§6.
 export const desktopUiTools: ClientToolDefinition[] = [
   defineTool(
     "get_open_windows",
@@ -499,6 +506,14 @@ export const desktopUiTools: ClientToolDefinition[] = [
     RemoveShortcutSchema,
     removeShortcut,
     { title: "Remove shortcut", annotations: SHORTCUT },
+  ),
+  defineTool(
+    "semantic_search",
+    "Semantic (embeddings) search — ranks pages and blocks by meaning, surfacing conceptually related content that keyword `search` misses. IMPORTANT: this is an opt-in feature that is NOT enabled on most graphs (it requires the user to turn on embeddings in Roam and be signed in), and there's no way to know in advance whether a given graph has it. Default to the regular `search` tool; reach for semantic_search only when the user explicitly asks for semantic/conceptual search, or when keyword search fell short and you want to try a meaning-based pass. If the graph hasn't enabled it, the tool returns an error telling you to use `search` instead — that's expected, fall back rather than surfacing it as a failure. Returns ranked markdown (best match first)." +
+      GUIDELINES_NOTE,
+    SemanticSearchSchema,
+    semanticSearch,
+    { title: "Semantic search", annotations: READ },
   ),
   defineTool(
     "file_get",

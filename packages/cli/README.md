@@ -108,6 +108,7 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 **Read:**
 
 - `search` - Search pages/blocks (empty query returns recently edited/viewed content)
+- `semantic-search` - Semantic (embeddings) search by meaning; requires embeddings enabled and a signed-in user
 - `search-templates` - Search Roam templates by name
 - `roam-query` - Execute a Roam query (`{{query:}}` blocks, not Datalog)
 - `datalog-query` - Execute a raw Datalog query against the graph's Datomic database
@@ -135,7 +136,7 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 
 ## Hiding content from the AI
 
-Blocks tagged `#.rm-hide` or `#.rm-private` — and everything nested under them — are omitted from the content these commands return. The read commands that surface graph content to the AI (`get-page`, `get-block`, `get-backlinks`, `search`, `search-templates`, `roam-query`) all skip hidden subtrees. Both the hashtag (`#.rm-hide`) and link (`[[.rm-hide]]`) forms work; `.rm-private` is Roam's existing "hidden from other users" tag, while `.rm-hide` hides from the AI specifically.
+Blocks tagged `#.rm-hide` or `#.rm-private` — and everything nested under them — are omitted from the content these commands return. The read commands that surface graph content to the AI (`get-page`, `get-block`, `get-backlinks`, `search`, `semantic-search`, `search-templates`, `roam-query`) all skip hidden subtrees. Both the hashtag (`#.rm-hide`) and link (`[[.rm-hide]]`) forms work; `.rm-private` is Roam's existing "hidden from other users" tag, while `.rm-hide` hides from the AI specifically.
 
 **This is a convenience filter, not a security guarantee.** The filtering is applied only to the AI content commands above. The raw `datalog-query` command reads the database directly and does **not** apply it, so a capable agent could still surface hidden blocks through datalog. Don't rely on these tags for anything truly sensitive — treat them as "keep it out of the AI's way," not "keep it secret."
 
