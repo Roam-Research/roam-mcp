@@ -405,7 +405,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_page",
-    "Get a page's content as markdown. Returns content with <roam> metadata tags containing UIDs - use these for follow-up operations but strip them when showing content to the user. Show remaining content verbatim, never paraphrase. Use maxDepth for large pages." +
+    "Get a page's content as markdown. Returns content with <roam> metadata tags containing UIDs - use these for follow-up operations but strip them when showing content to the user. Block refs render as ((uid))<ref>text</ref> where text is the referenced block's content - when writing back, drop the whole <ref>…</ref>, keeping just ((uid)). Show remaining content verbatim, never paraphrase. Use maxDepth for large pages." +
       GUIDELINES_NOTE,
     GetPageSchema,
     getPage,
@@ -413,7 +413,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_block",
-    "Get a block's content as markdown. Returns content with <roam> metadata tags containing UIDs - use these for follow-up operations but strip them when showing content to the user. Show remaining content verbatim, never paraphrase. Use maxDepth for large blocks." +
+    "Get a block's content as markdown. Returns content with <roam> metadata tags containing UIDs - use these for follow-up operations but strip them when showing content to the user. Block refs render as ((uid))<ref>text</ref> where text is the referenced block's content - when writing back, drop the whole <ref>…</ref>, keeping just ((uid)). Show remaining content verbatim, never paraphrase. Use maxDepth for large blocks." +
       GUIDELINES_NOTE,
     GetBlockSchema,
     getBlock,
