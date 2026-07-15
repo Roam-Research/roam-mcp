@@ -1,0 +1,17 @@
+{
+  // Dev-only config for `npm run mcp` / `npm run cli` (see root package.json).
+  // Maps cross-package imports (@roam-research/roam-tools-*) to TypeScript source
+  // so the whole monorepo runs live with no build step. NOT used by `tsc --build`
+  // and NOT published: the packages' `exports` maps point published consumers at
+  // `dist/` only, so this source-resolution never leaks downstream.
+  // See CLAUDE.md "Development mode" and GitHub issue #30.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@roam-research/roam-tools-core": ["./packages/core/src/index.ts"],
+      "@roam-research/roam-tools-local": ["./packages/local/src/index.ts"],
+      "@roam-research/roam-tools-local/connect": ["./packages/local/src/connect.ts"]
+    }
+  }
+}

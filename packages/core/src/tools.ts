@@ -44,8 +44,10 @@ import {
 import {
   SearchSchema,
   SearchTemplatesSchema,
+  SemanticSearchSchema,
   search,
   searchTemplates,
+  semanticSearch,
 } from "./operations/search.js";
 import { QuerySchema, query } from "./operations/query.js";
 import { DatalogQuerySchema, datalogQuery } from "./operations/datalog.js";
@@ -67,6 +69,12 @@ import {
   uploadFile,
   deleteFile,
 } from "./operations/files.js";
+import {
+  AddShortcutSchema,
+  RemoveShortcutSchema,
+  addShortcut,
+  removeShortcut,
+} from "./operations/shortcuts.js";
 
 // Common schema for graph parameter (used by most tools)
 const GraphSchema = z.object({
@@ -236,6 +244,15 @@ const NAV: ToolAnnotations = {
 };
 // file_upload's url path does a server-side fetch of an arbitrary host.
 const UPLOAD: ToolAnnotations = { ...APPEND, openWorldHint: true };
+// Shortcuts persist in the graph (unlike the ephemeral NAV tools), but they change
+// the sidebar shortcut list, not page/block content — so non-destructive, and
+// idempotent (re-adding a page moves it; removing an absent one is a no-op).
+const SHORTCUT: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
 
 // ----------------------------------------------------------------------------
 // Output schemas (MCP tools/list structured-result hints) — WRITE TOOLS ONLY.
@@ -388,7 +405,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_page",
-    "Get a page's content as markdown. Returns content with <roam> metadata tags containing UIDs - use these for follow-up operations but strip them when showing content to the user. Show remaining content verbatim, never paraphrase. Use maxDepth for large pages." +
+    "Get a page's content as markdown. Returns content with <roam> metadata tags containing UIDs - use these for follow-up operations but strip them when showing content to the user. Block refs render as ((uid))<ref>text</ref> where text is the referenced block's content - when writing back, drop the whole <ref>…</ref>, keeping just ((uid)). Show remaining content verbatim, never paraphrase. Use maxDepth for large pages." +
       GUIDELINES_NOTE,
     GetPageSchema,
     getPage,
@@ -396,7 +413,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_block",
-    "Get a block's content as markdown. Returns content with <roam> metadata tags containing UIDs - use these for follow-up operations but strip them when showing content to the user. Show remaining content verbatim, never paraphrase. Use maxDepth for large blocks." +
+    "Get a block's content as markdown. Returns content with <roam> metadata tags containing UIDs - use these for follow-up operations but strip them when showing content to the user. Block refs render as ((uid))<ref>text</ref> where text is the referenced block's content - when writing back, drop the whole <ref>…</ref>, keeping just ((uid)). Show remaining content verbatim, never paraphrase. Use maxDepth for large blocks." +
       GUIDELINES_NOTE,
     GetBlockSchema,
     getBlock,
@@ -434,8 +451,17 @@ export function getDataTools(opts: GetDataToolsOptions = {}): ClientToolDefiniti
   );
 }
 
-// Desktop UI Tools (require local Roam Desktop — file ops + window/selection introspection;
-// hosted MCP omits these because the parameters/effects assume a local environment).
+// Desktop UI Tools (hosted MCP omits all of these). Most require a local Roam
+// Desktop — file ops + window/selection introspection whose parameters/effects
+// assume a local environment. A few entries are not Desktop-UI per se but are
+// parked here to stay LOCAL-ONLY:
+//   - add_shortcut/remove_shortcut: graph data, but the hosted backend isn't
+//     confirmed to expose data.page.addShortcut/removeShortcut yet.
+//   - semantic_search: needs the renderer's search worker + embeddings index,
+//     which the hosted MCP backend has no counterpart for (relemma
+//     user_api/ai.cljs get-semantic-search-md-fn is renderer-only).
+// Each is a candidate to move to dataTools once its hosted backend exists. See
+// docs/architecture.md §2d/§6.
 export const desktopUiTools: ClientToolDefinition[] = [
   defineTool(
     "get_open_windows",
@@ -466,6 +492,30 @@ export const desktopUiTools: ClientToolDefinition[] = [
     { title: "Open in sidebar", annotations: { ...NAV, idempotentHint: false } },
   ),
   defineTool(
+    "add_shortcut",
+    "Add a page to the graph's Shortcuts (a.k.a. starred/pinned pages — the `starredPages` get_graph_guidelines returns). Pass `index` to place it at a specific position (0-based); omit to append at the end. Re-adding an already-shortcutted page with an index moves it." +
+      GUIDELINES_NOTE,
+    AddShortcutSchema,
+    addShortcut,
+    { title: "Add shortcut", annotations: SHORTCUT },
+  ),
+  defineTool(
+    "remove_shortcut",
+    "Remove a page from the graph's Shortcuts (a.k.a. starred/pinned pages — the `starredPages` get_graph_guidelines returns). Only the shortcut entry is removed; the page itself is NOT deleted. No-op if the page isn't shortcutted." +
+      GUIDELINES_NOTE,
+    RemoveShortcutSchema,
+    removeShortcut,
+    { title: "Remove shortcut", annotations: SHORTCUT },
+  ),
+  defineTool(
+    "semantic_search",
+    "Semantic (embeddings) search — ranks pages and blocks by meaning, surfacing conceptually related content that keyword `search` misses. IMPORTANT: this is an opt-in feature that is NOT enabled on most graphs (it requires the user to turn on embeddings in Roam and be signed in), and there's no way to know in advance whether a given graph has it. Default to the regular `search` tool; reach for semantic_search only when the user explicitly asks for semantic/conceptual search, or when keyword search fell short and you want to try a meaning-based pass. If the graph hasn't enabled it, the tool returns an error telling you to use `search` instead — that's expected, fall back rather than surfacing it as a failure. Returns ranked markdown (best match first)." +
+      GUIDELINES_NOTE,
+    SemanticSearchSchema,
+    semanticSearch,
+    { title: "Semantic search", annotations: READ },
+  ),
+  defineTool(
     "file_get",
     "Fetch a file hosted on Roam (handles decryption for encrypted graphs)." + GUIDELINES_NOTE,
     FileGetSchema,
@@ -474,7 +524,7 @@ export const desktopUiTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "file_upload",
-    "Upload a file to Roam. Returns the Firebase storage URL. Usually you'll want to create a new block with the file as markdown: `![](url)`. Provide ONE of: filePath (preferred - local file, server reads directly), url (remote URL, server fetches), or base64 (raw data, fallback for sandboxed clients)." +
+    "Upload a file to Roam. Returns the Firebase storage URL. Usually you'll want to create a new block with the file as markdown: `![](url)` for images, or `[filename](url)` for other file types. Provide ONE of: filePath (preferred - local file, server reads directly), url (remote URL, server fetches), or base64 (raw data, fallback for sandboxed clients)." +
       GUIDELINES_NOTE,
     FileUploadSchema,
     uploadFile,

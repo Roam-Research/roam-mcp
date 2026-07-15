@@ -94,6 +94,37 @@ function detectMimeTypeFromExtension(filePath: string): string | null {
     ".avif": "image/avif",
     // Documents
     ".pdf": "application/pdf",
+    // Text / web / data (no reliable magic bytes — extension is the only signal)
+    ".html": "text/html",
+    ".htm": "text/html",
+    ".txt": "text/plain",
+    ".md": "text/markdown",
+    ".markdown": "text/markdown",
+    ".csv": "text/csv",
+    ".tsv": "text/tab-separated-values",
+    ".json": "application/json",
+    ".xml": "application/xml",
+    ".yaml": "application/yaml",
+    ".yml": "application/yaml",
+    ".css": "text/css",
+    ".js": "text/javascript",
+    ".rtf": "application/rtf",
+    // Audio / video
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".m4a": "audio/mp4",
+    ".ogg": "audio/ogg",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".mov": "video/quicktime",
+    // Office / archives
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".ppt": "application/vnd.ms-powerpoint",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".zip": "application/zip",
   };
   return mimeTypes[ext] || null;
 }
@@ -106,14 +137,13 @@ async function readLocalFile(
   const base64 = buffer.toString("base64");
   const filename = basename(filePath);
 
-  // Try extension first, then magic bytes
-  let mimetype = detectMimeTypeFromExtension(filePath);
-  if (!mimetype) {
-    mimetype = detectMimeTypeFromBase64(base64);
-  }
-  if (!mimetype) {
-    throw new Error(`Could not detect MIME type for file: ${filePath}`);
-  }
+  // Try extension first, then magic bytes; fall back to a generic binary type
+  // rather than failing — Roam accepts any mimetype, so an undetected type (e.g.
+  // an .html article backup) should still upload, not error out.
+  const mimetype =
+    detectMimeTypeFromExtension(filePath) ||
+    detectMimeTypeFromBase64(base64) ||
+    "application/octet-stream";
 
   return { base64, mimetype, filename };
 }
@@ -134,14 +164,14 @@ async function fetchRemoteFile(
   const urlPath = new URL(url).pathname;
   const filename = basename(urlPath) || "image";
 
-  // Try Content-Type header first, then extension, then magic bytes
+  // Try Content-Type header first, then extension, then magic bytes; fall back to
+  // a generic binary type rather than failing (Roam accepts any mimetype).
   let mimetype = response.headers.get("content-type")?.split(";")[0];
   if (!mimetype || mimetype === "application/octet-stream") {
     mimetype =
-      detectMimeTypeFromExtension(urlPath) || detectMimeTypeFromBase64(base64) || undefined;
-  }
-  if (!mimetype) {
-    throw new Error(`Could not detect MIME type for URL: ${url}`);
+      detectMimeTypeFromExtension(urlPath) ||
+      detectMimeTypeFromBase64(base64) ||
+      "application/octet-stream";
   }
 
   return { base64, mimetype, filename };
@@ -200,9 +230,15 @@ export async function uploadFile(
     mimetype = params.mimetype || fileData.mimetype;
     filename = params.filename || fileData.filename;
   } else {
-    // Use provided base64 directly (params.base64 must be set due to validation above)
+    // Use provided base64 directly (params.base64 must be set due to validation above).
+    // Magic bytes are more reliable than the caller's filename extension, so try
+    // them first, then the extension (covers text types like .html), then generic.
     base64 = params.base64!;
-    mimetype = params.mimetype || detectMimeTypeFromBase64(base64) || "application/octet-stream";
+    mimetype =
+      params.mimetype ||
+      detectMimeTypeFromBase64(base64) ||
+      (params.filename ? detectMimeTypeFromExtension(params.filename) : null) ||
+      "application/octet-stream";
     filename = params.filename;
   }
 
