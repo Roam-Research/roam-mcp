@@ -88,3 +88,7 @@ export type {
 // (the local transport's getCurrentDate()). The schema/resolver helpers stay
 // core-internal — operations import them directly from ./relative-date.js.
 export { localTodayString } from "./relative-date.js";
+
+// Canonical Roam agent-markdown guide (also returned as get_graph_guidelines'
+// `roamSyntax` field). Exported so the skill consistency test can key off it.
+export { ROAM_SYNTAX } from "./roam-syntax.js";
