@@ -75,6 +75,8 @@ import {
   addShortcut,
   removeShortcut,
 } from "./operations/shortcuts.js";
+import { ReloadDevExtensionsSchema, reloadDevExtensions } from "./operations/extensions.js";
+import { SuggestLinksSchema, suggestLinks } from "./operations/links.js";
 
 // Common schema for graph parameter (used by most tools)
 const GraphSchema = z.object({
@@ -248,6 +250,15 @@ const UPLOAD: ToolAnnotations = { ...APPEND, openWorldHint: true };
 // the sidebar shortcut list, not page/block content — so non-destructive, and
 // idempotent (re-adding a page moves it; removing an absent one is a no-op).
 const SHORTCUT: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+// reload_dev_extensions re-runs developer extension code (a dev-loop action). It
+// doesn't mutate page/block content itself, so non-destructive; reloading twice
+// lands the same end state, so idempotent. Local Roam Desktop only.
+const DEV: ToolAnnotations = {
   readOnlyHint: false,
   destructiveHint: false,
   idempotentHint: true,
@@ -506,6 +517,22 @@ export const desktopUiTools: ClientToolDefinition[] = [
     RemoveShortcutSchema,
     removeShortcut,
     { title: "Remove shortcut", annotations: SHORTCUT },
+  ),
+  defineTool(
+    "suggest_links",
+    "Suggest existing Roam pages worth linking to from a passage of `text`, ranked most-plausible first, to turn into [[links]]. It only suggests — it does not create links." +
+      GUIDELINES_NOTE,
+    SuggestLinksSchema,
+    suggestLinks,
+    { title: "Suggest links", annotations: READ },
+  ),
+  defineTool(
+    "reload_dev_extensions",
+    "Reload all developer-mode extensions in Roam Desktop. Use during extension development to apply code changes without restarting Roam. Returns the list of reloaded extensions ({id, name})." +
+      GUIDELINES_NOTE,
+    ReloadDevExtensionsSchema,
+    reloadDevExtensions,
+    { title: "Reload developer extensions", annotations: DEV },
   ),
   defineTool(
     "semantic_search",

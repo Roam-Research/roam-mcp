@@ -65,6 +65,19 @@ describe("tool annotations — representative tools per category", () => {
     expect(annotationsFor("open_sidebar")?.idempotentHint).toBe(false);
   });
 
+  it("suggest_links is a read (read-only, non-destructive)", () => {
+    const a = annotationsFor("suggest_links");
+    expect(a?.readOnlyHint).toBe(true);
+    expect(a?.destructiveHint).toBe(false);
+  });
+
+  it("reload_dev_extensions is a side-effecting dev action but non-destructive and idempotent", () => {
+    const a = annotationsFor("reload_dev_extensions");
+    expect(a?.readOnlyHint).toBe(false);
+    expect(a?.destructiveHint).toBe(false);
+    expect(a?.idempotentHint).toBe(true);
+  });
+
   it("file_upload is the one open-world tool (server-side fetch of an arbitrary URL)", () => {
     const a = annotationsFor("file_upload");
     expect(a?.readOnlyHint).toBe(false);
