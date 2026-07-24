@@ -75,7 +75,12 @@ import {
   addShortcut,
   removeShortcut,
 } from "./operations/shortcuts.js";
-import { ReloadDevExtensionsSchema, reloadDevExtensions } from "./operations/extensions.js";
+import {
+  ReloadDevExtensionsSchema,
+  CallExtensionToolSchema,
+  reloadDevExtensions,
+  callExtensionTool,
+} from "./operations/extensions.js";
 import { SuggestLinksSchema, suggestLinks } from "./operations/links.js";
 
 // Common schema for graph parameter (used by most tools)
@@ -207,7 +212,8 @@ export const DEFAULT_MCP_INSTRUCTIONS =
 // whose config write IS its purpose, so it is not read-only.
 //
 // openWorldHint is false for every tool except file_upload (its url path fetches
-// an arbitrary external host server-side).
+// an arbitrary external host server-side) and call_extension_tool (arbitrary
+// extension handler code).
 // ----------------------------------------------------------------------------
 const READ: ToolAnnotations = {
   readOnlyHint: true,
@@ -263,6 +269,17 @@ const DEV: ToolAnnotations = {
   destructiveHint: false,
   idempotentHint: true,
   openWorldHint: false,
+};
+// call_extension_tool runs arbitrary extension-registered handler code, so its
+// real effects depend entirely on the target tool (each advertises a
+// read/append/edit scope, enforced renderer-side). Hints must cover the worst
+// case: possibly destructive, not idempotent, and open-world (a handler can
+// reach external services).
+const EXTENSION: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: false,
+  openWorldHint: true,
 };
 
 // ----------------------------------------------------------------------------
@@ -533,6 +550,14 @@ export const desktopUiTools: ClientToolDefinition[] = [
     ReloadDevExtensionsSchema,
     reloadDevExtensions,
     { title: "Reload developer extensions", annotations: DEV },
+  ),
+  defineTool(
+    "call_extension_tool",
+    "Invoke an AI tool registered at runtime by a Roam extension in the local Roam Desktop app. Available tools are listed in get_graph_guidelines' `extensionTools` field (absent when the graph has none) with each tool's id, description, scope, and input schema. Pass `tool` exactly as listed (ids are opaque — never construct or parse them) and `args` matching that entry's inputSchema. A tool's scope says whether it modifies the graph — only read-scoped tools are safe to retry freely." +
+      GUIDELINES_NOTE,
+    CallExtensionToolSchema,
+    callExtensionTool,
+    { title: "Call extension AI tool", annotations: EXTENSION },
   ),
   defineTool(
     "semantic_search",

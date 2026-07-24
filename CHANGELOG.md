@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.9.2 - 2026-07-23
+
+- **New local-only tool: `call_extension_tool`** (`data.ai.callExtensionTool`) — invokes AI
+  tools that Roam extensions and roam/js scripts register at runtime. Takes `tool` (the id
+  exactly as advertised — opaque: qualified `<extension-id>/<name>` for extension-registered
+  tools, bare `<name>` for roamAlphaAPI-registered ones; never parse or construct it) and
+  optional `args` (a JSON object matching the tool's advertised `inputSchema`). Registered in
+  `desktopUiTools`: the hosted backend serves from a peer replica with no channel to a live
+  client, so this tool must never reach the hosted server. Annotations are worst-case
+  (destructive, non-idempotent, open-world) since the tool runs arbitrary extension handler
+  code.
+- **All validation is renderer-side; errors pass through verbatim.** Roam meta-validates
+  schemas at registration and validates the AI's `args` against the tool's `inputSchema`
+  (draft-07) before the handler runs — roam-tools deliberately ships no validator, keeping
+  the transport a dumb pipe. The three error classes (unknown tool — lists the currently
+  available ids; args/schema mismatch — names the violations; handler failure) are written
+  for model self-correction and surface untouched. One exception: an app build without the
+  feature returns `UNKNOWN_ACTION`, which the tool maps to a friendly "update Roam Desktop"
+  message — the API-version gate can't detect this case (see below).
+- **`get_graph_guidelines` now surfaces `extensionTools`** — the local backend's listing of
+  registered extension AI tools (`{tool, description, scope, extension?, inputSchema?}`),
+  present only when non-empty and only on the local transport. When present, `nextSteps`
+  points the agent at `call_extension_tool`. Content-only as before (no `outputSchema`).
+- **CLI: JSON flags for non-flat tool params.** The generated commands now parse
+  object/record/array-typed fields as JSON strings (`roam call-extension-tool --tool x
+--args '{"key": "value"}'`), with a clear error on invalid JSON. This also fixes
+  `datalog-query --inputs`, which previously passed the raw string through and always
+  failed Zod validation.
+- **`EXPECTED_API_VERSION` 1.1.3 → 1.1.5** — the extension-AI-tools feature shipped as Local
+  API `1.1.5`, a patch revision. Roam's version gate matches major.minor exactly and ignores
+  patch, so compatibility with older builds is unchanged — which also means the gate **cannot
+  detect** a desktop build that predates the feature. Older builds return `UNKNOWN_ACTION`
+  for `data.ai.callExtensionTool` (mapped to the friendly update message above) and simply
+  omit `extensionTools` from guidelines.
+
 ## 0.9.1 - 2026-07-20
 
 - **Two new local-only tools**, each surfacing an existing Roam Local API action. No

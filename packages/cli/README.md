@@ -138,6 +138,7 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 **Developer:**
 
 - `reload-dev-extensions` - Reload all developer-mode extensions in Roam Desktop (apply code changes without restarting)
+- `call-extension-tool` - Invoke an AI tool registered by a Roam extension or roam/js script (discover available tools via the `extensionTools` field of `get-graph-guidelines`; pass tool arguments as JSON, e.g. `--args '{"key": "value"}'`)
 
 ## Hiding content from the AI
 

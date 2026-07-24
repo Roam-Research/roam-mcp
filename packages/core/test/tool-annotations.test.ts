@@ -78,10 +78,18 @@ describe("tool annotations — representative tools per category", () => {
     expect(a?.idempotentHint).toBe(true);
   });
 
-  it("file_upload is the one open-world tool (server-side fetch of an arbitrary URL)", () => {
+  it("file_upload is open-world (server-side fetch of an arbitrary URL)", () => {
     const a = annotationsFor("file_upload");
     expect(a?.readOnlyHint).toBe(false);
     expect(a?.destructiveHint).toBe(false);
+    expect(a?.openWorldHint).toBe(true);
+  });
+
+  it("call_extension_tool carries worst-case hints (runs arbitrary extension handler code)", () => {
+    const a = annotationsFor("call_extension_tool");
+    expect(a?.readOnlyHint).toBe(false);
+    expect(a?.destructiveHint).toBe(true);
+    expect(a?.idempotentHint).toBe(false);
     expect(a?.openWorldHint).toBe(true);
   });
 });
@@ -94,10 +102,10 @@ describe("tool annotations — invariants across all core tools", () => {
     }
   });
 
-  it("openWorldHint is false for every tool except file_upload", () => {
+  it("openWorldHint is false for every tool except file_upload and call_extension_tool", () => {
+    const openWorld = new Set(["file_upload", "call_extension_tool"]);
     for (const tool of tools) {
-      const expected = tool.name === "file_upload";
-      expect(tool.annotations?.openWorldHint, tool.name).toBe(expected);
+      expect(tool.annotations?.openWorldHint, tool.name).toBe(openWorld.has(tool.name));
     }
   });
 });

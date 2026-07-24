@@ -61,7 +61,7 @@ function writeImageToTemp(
 
 const program = new Command();
 
-program.name("roam").description("Roam Research CLI").version("0.9.1");
+program.name("roam").description("Roam Research CLI").version("0.9.2");
 
 // Helper to check if a Zod schema field is optional
 function isOptional(schema: z.ZodTypeAny): boolean {
@@ -91,6 +91,14 @@ function hasBooleanType(schema: z.ZodTypeAny): boolean {
   return getBaseType(schema) instanceof z.ZodBoolean;
 }
 
+// Helper to check if schema is a non-flat type (object/record/array). These
+// can't map to a plain string flag, so their flag value is a JSON string
+// parsed before dispatch (e.g. --args '{"front":"hi"}', --inputs '["uid"]').
+function hasJsonType(schema: z.ZodTypeAny): boolean {
+  const base = getBaseType(schema);
+  return base instanceof z.ZodRecord || base instanceof z.ZodObject || base instanceof z.ZodArray;
+}
+
 // Build commands dynamically from shared tool definitions
 tools.forEach((tool) => {
   const cmd = program.command(tool.name.replace(/_/g, "-")).description(tool.description);
@@ -118,7 +126,17 @@ tools.forEach((tool) => {
         const camelKey = key.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
         const fieldSchema = shape[camelKey];
 
-        if (fieldSchema && hasNumberType(fieldSchema) && !isNaN(Number(value))) {
+        if (fieldSchema && hasJsonType(fieldSchema) && typeof value === "string") {
+          try {
+            args[camelKey] = JSON.parse(value);
+          } catch {
+            const flagName = camelKey.replace(/([A-Z])/g, "-$1").toLowerCase();
+            console.error(
+              `Error: --${flagName} must be valid JSON (e.g. '{"key": "value"}' or '["item"]'), got: ${value}`,
+            );
+            process.exit(1);
+          }
+        } else if (fieldSchema && hasNumberType(fieldSchema) && !isNaN(Number(value))) {
           args[camelKey] = Number(value);
         } else if (fieldSchema && hasBooleanType(fieldSchema)) {
           args[camelKey] = value === "true" || value === true;

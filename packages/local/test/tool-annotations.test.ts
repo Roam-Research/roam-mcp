@@ -28,11 +28,12 @@ describe("local standalone annotations", () => {
   });
 
   it("every tool in the combined local registry is annotated (core forwarded + local)", () => {
+    // file_upload (server-side fetch of an arbitrary URL) and call_extension_tool
+    // (arbitrary extension handler code) are the open-world tools.
+    const openWorld = new Set(["file_upload", "call_extension_tool"]);
     for (const tool of tools) {
       expect(tool.annotations, `${tool.name} annotations`).toBeDefined();
-      // file_upload is the one open-world tool (server-side fetch of an arbitrary URL).
-      const expectedOpenWorld = tool.name === "file_upload";
-      expect(tool.annotations?.openWorldHint, tool.name).toBe(expectedOpenWorld);
+      expect(tool.annotations?.openWorldHint, tool.name).toBe(openWorld.has(tool.name));
     }
   });
 });
