@@ -58,10 +58,13 @@ export async function callExtensionTool(
   if (params.args !== undefined) apiParams.args = params.args;
 
   // Three error classes arrive as ordinary Local API 500s whose messages are
-  // deliberately written for model self-correction, so all pass through
-  // verbatim: unknown tool (lists the currently available ids), args/inputSchema
-  // mismatch (names the violations; validation is renderer-side — never add a
-  // validator here), and handler failure.
+  // deliberately written for model self-correction: unknown tool (lists the
+  // currently available ids), args/inputSchema mismatch (names the violations;
+  // validation is renderer-side — never add a validator here), and handler
+  // failure. NOTE the local client rewraps every 500 as "Server error: <message>"
+  // with code INTERNAL_ERROR (client.ts handleApiError), so the guidance TEXT
+  // reaches the model but the error class does not — don't claim or rely on
+  // verbatim pass-through.
   try {
     const response = await client.call<CallExtensionToolResult>("data.ai.callExtensionTool", [
       apiParams,

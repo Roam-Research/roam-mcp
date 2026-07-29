@@ -271,10 +271,12 @@ const DEV: ToolAnnotations = {
   openWorldHint: false,
 };
 // call_extension_tool runs arbitrary extension-registered handler code, so its
-// real effects depend entirely on the target tool (each advertises a
-// read/append/edit scope, enforced renderer-side). Hints must cover the worst
-// case: possibly destructive, not idempotent, and open-world (a handler can
-// reach external services).
+// real effects depend entirely on the target tool. Each advertises a
+// read/append/edit scope, but that only gates the CALLER'S TOKEN renderer-side —
+// it does not constrain what the handler actually does (extension code runs with
+// full ambient authority). Hints must cover the worst case: possibly
+// destructive, not idempotent, and open-world (a handler can reach external
+// services).
 const EXTENSION: ToolAnnotations = {
   readOnlyHint: false,
   destructiveHint: true,
@@ -553,7 +555,7 @@ export const desktopUiTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "call_extension_tool",
-    "Invoke an AI tool registered at runtime by a Roam extension in the local Roam Desktop app. Available tools are listed in get_graph_guidelines' `extensionTools` field (absent when the graph has none) with each tool's id, description, scope, and input schema. Pass `tool` exactly as listed (ids are opaque — never construct or parse them) and `args` matching that entry's inputSchema. A tool's scope says whether it modifies the graph — only read-scoped tools are safe to retry freely." +
+    "Invoke an AI tool registered at runtime by a Roam extension in the local Roam Desktop app. Available tools are listed in get_graph_guidelines' `extensionTools` field (absent when the graph has none) with each tool's id, description, scope, and input schema. Pass `tool` exactly as listed (ids are opaque — never construct or parse them) and `args` matching that entry's inputSchema. A tool's `scope` is what its extension declares it needs — it is NOT enforced on the tool's behavior, so treat every call as potentially modifying the graph." +
       GUIDELINES_NOTE,
     CallExtensionToolSchema,
     callExtensionTool,

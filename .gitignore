@@ -9,3 +9,5 @@ dist/
 .env
 .env.*
 user/
+.clj-kondo/
+.lsp/

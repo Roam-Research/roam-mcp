@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.2 - 2026-07-23
+## 0.9.2 - 2026-07-29
 
 - **New local-only tool: `call_extension_tool`** (`data.ai.callExtensionTool`) — invokes AI
   tools that Roam extensions and roam/js scripts register at runtime. Takes `tool` (the id
@@ -11,14 +11,19 @@
   client, so this tool must never reach the hosted server. Annotations are worst-case
   (destructive, non-idempotent, open-world) since the tool runs arbitrary extension handler
   code.
-- **All validation is renderer-side; errors pass through verbatim.** Roam meta-validates
+- **All validation is renderer-side; error guidance reaches the model.** Roam meta-validates
   schemas at registration and validates the AI's `args` against the tool's `inputSchema`
   (draft-07) before the handler runs — roam-tools deliberately ships no validator, keeping
   the transport a dumb pipe. The three error classes (unknown tool — lists the currently
   available ids; args/schema mismatch — names the violations; handler failure) are written
-  for model self-correction and surface untouched. One exception: an app build without the
-  feature returns `UNKNOWN_ACTION`, which the tool maps to a friendly "update Roam Desktop"
-  message — the API-version gate can't detect this case (see below).
+  for model self-correction; their message text reaches the model, though the local client
+  wraps them as `Server error: <message>` with code `INTERNAL_ERROR` (they arrive as
+  Local API 500s). One exception: an app build without the feature returns
+  `UNKNOWN_ACTION`, which the tool maps to a friendly "update Roam Desktop" message — the
+  API-version gate can't detect this case (see below).
+- Mixed versions: a **pre-0.9.2 roam-tools against a newer Roam Desktop** still forwards
+  `extensionTools` in `get_graph_guidelines` (the field passes through `...result`) but has
+  no `call_extension_tool` to invoke them — upgrade roam-tools to invoke.
 - **`get_graph_guidelines` now surfaces `extensionTools`** — the local backend's listing of
   registered extension AI tools (`{tool, description, scope, extension?, inputSchema?}`),
   present only when non-empty and only on the local transport. When present, `nextSteps`
