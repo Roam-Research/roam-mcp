@@ -2,3 +2,5 @@ dist/
 package-lock.json
 *.tsbuildinfo
 *.tgz
+.clj-kondo/
+.lsp/
