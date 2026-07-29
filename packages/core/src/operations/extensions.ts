@@ -64,7 +64,8 @@ export async function callExtensionTool(
   // failure. NOTE the local client rewraps every 500 as "Server error: <message>"
   // with code INTERNAL_ERROR (client.ts handleApiError), so the guidance TEXT
   // reaches the model but the error class does not — don't claim or rely on
-  // verbatim pass-through.
+  // verbatim pass-through. (No test currently pins that non-404 errors exit
+  // this catch unchanged; if you touch the catch, keep them flowing through.)
   try {
     const response = await client.call<CallExtensionToolResult>("data.ai.callExtensionTool", [
       apiParams,

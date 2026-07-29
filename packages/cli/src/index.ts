@@ -111,6 +111,12 @@ tools.forEach((tool) => {
 
     // Build flag string
     const flagName = param.replace(/([A-Z])/g, "-$1").toLowerCase();
+    // KNOWN GAP: `[value]` makes the value itself optional, so a bare flag
+    // (e.g. `--args` with nothing after it) reaches the handler as boolean
+    // `true`, skips the JSON-parse branch below (string-guarded), and fails
+    // with a raw Zod type error instead of the friendly message. Fix when the
+    // CLI gets a test harness: `<value>` for non-boolean optional flags (bare
+    // boolean flags like --merge-pages must keep meaning `true`).
     const flag = isRequired ? `--${flagName} <value>` : `--${flagName} [value]`;
 
     cmd.option(flag, description);
