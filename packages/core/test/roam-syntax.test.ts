@@ -23,7 +23,10 @@ const INVARIANTS: { label: string; pattern: RegExp }[] = [
     label: "((uid))<ref> is a block reference",
     pattern: /block reference[\s\S]{0,20}\(\(uid\)\)<ref>/i,
   },
-  { label: "childrenViewType (view type / numbered lists)", pattern: /childrenViewType/ },
+  {
+    label: "numbered lists come from childrenViewType on the parent",
+    pattern: /childrenViewType[^\n]{0,40}numbered/i,
+  },
   {
     label: "{{[[TODO]]}} checkbox must lead the block",
     pattern: /\{\{\[\[TODO\]\]\}\}[\s\S]{0,60}(start|lead)/i,
@@ -32,7 +35,11 @@ const INVARIANTS: { label: string; pattern: RegExp }[] = [
     label: "update_block stores its string literally",
     pattern: /update_block`?\s+stores its\s+`?string`?\s+\**literal/i,
   },
-  { label: "childrenViewType is NOT a create_block param", pattern: /not\**\s+`?create_block/i },
+  {
+    // bound to childrenViewType so a stray "not create_block" elsewhere can't satisfy it
+    label: "childrenViewType is NOT a create_block param",
+    pattern: /childrenViewType[\s\S]{0,90}not\**[\s\S]{0,12}`?create_block/i,
+  },
   {
     label: "headings nest by indenting (flat in bullet markdown)",
     pattern: /nest by\s+`?\**indent/i,

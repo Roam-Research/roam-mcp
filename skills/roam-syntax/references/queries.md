@@ -67,7 +67,7 @@ edit-time filters, arbitrary dates.
 > **In `datalog_query`, plain DataScript is the portable subset.** The `:q` extensions — `ms/*` /
 > `dnp/*` date symbols and the inbuilt rules (`created-by`, `refs-page`, `created-between`, …) — are
 > preprocessed by the **local/Desktop** transport, so they work there; the **hosted/remote** transport
-> (what the skill ships with) does **not** support them. `current/*` works on neither (no page context
+> does **not** support them. `current/*` works on neither (no page context
 > outside a `:q` block). For a query that runs on any transport, use raw attributes (`:create/time`
 > epoch ms, `:block/refs`, `:node/title`), literal millisecond timestamps, and explicit `:where`
 > clauses. The extensions are listed at the bottom (native in `:q` blocks; Desktop-only in

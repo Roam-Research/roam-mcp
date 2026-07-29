@@ -222,7 +222,7 @@ The format change is _why_ this repo now ships syntax guidance written to the ne
   and bypass core, so that path must include `ROAM_SYNTAX` separately (a relemma-side change).
 - **Read-tool descriptions** (`packages/core/src/tools.ts`, shared `READ_FORMAT_NOTE`) tell agents how to
   read `<roam>`/`<ref>` output and how to write it back without losing block references.
-- **`skills/roam-syntax/`** — a fuller Agent Skill (planned) for clients that install it.
+- **`skills/roam-syntax/`** — a fuller Agent Skill for clients that install it.
 
 All of this is **gated on deployment (§5):** it must not be published/released for a transport until
 that transport actually emits the new format — remote via the `remote-mcp-additions` deploy + the

@@ -34,17 +34,17 @@ below.
 
 ### Writing: Roam markdown ≠ standard markdown
 
-| You want        | Use this (Roam)                                           | NOT (standard markdown)            |
-| --------------- | --------------------------------------------------------- | ---------------------------------- |
-| Italics         | `__text__` (double underscore)                            | `*text*` / `_text_` (see note)     |
-| Bold            | `**text**`                                                | `__text__` (that's italics)        |
-| Highlight       | `^^text^^`                                                | —                                  |
-| Strikethrough   | `~~text~~`                                                | —                                  |
-| Checkbox / task | `{{[[TODO]]}}` / `{{[[DONE]]}}` **at block start**        | `- [ ]` / `- [x]`                  |
-| Heading         | `#` / `##` / `###` at block start (H1–H3 only; `####`→H3) | `####`+                            |
-| Numbered list   | `childrenViewType: "numbered"` on the parent              | `1.` / `2.` markers                |
-| Table           | write a **pipe table** — create ops convert it            | hand-building `{{[[table]]}}`      |
-| Nesting         | **indent** child blocks                                   | headings do NOT slurp what follows |
+| You want        | Use this (Roam)                                           | NOT (standard markdown)                                 |
+| --------------- | --------------------------------------------------------- | ------------------------------------------------------- |
+| Italics         | `__text__` (double underscore)                            | `*text*` / `_text_` (see note)                          |
+| Bold            | `**text**`                                                | `__text__` (that's italics)                             |
+| Highlight       | `^^text^^`                                                | —                                                       |
+| Strikethrough   | `~~text~~`                                                | —                                                       |
+| Checkbox / task | `{{[[TODO]]}}` / `{{[[DONE]]}}` **at block start**        | `- [ ]` / `- [x]`                                       |
+| Heading         | `#` / `##` / `###` at block start (H1–H3 only; `####`→H3) | `####`+                                                 |
+| Numbered list   | `childrenViewType: "numbered"` on the parent              | `1.` / `2.` markers                                     |
+| Table           | write a **pipe table** — create ops convert it            | hand-building `{{[[table]]}}`                           |
+| Nesting         | **indent** child blocks                                   | headings (in bullet markdown) do NOT slurp what follows |
 
 - **Italics is `__text__`.** On `update_block` (literal), `*text*` / `_text_` are stored as-is and
   render as plain characters; `create_page` / `create_block` normalize them to `__text__`. Always write

@@ -383,7 +383,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "search",
-    "Search for pages and blocks by text. Returns paginated results with markdown content and optional breadcrumb paths. Call with an empty query to get recently edited and viewed content — useful for understanding what the user is currently working on." +
+    'Search for pages and blocks by text. Returns paginated results with markdown content and optional breadcrumb paths. Call with an empty query to get recently edited and viewed content — useful for understanding what the user is currently working on. Long result blocks are capped: `truncated="N"` on a `<roam>` tag means N characters were cut — get_block that uid for the full text before editing it.' +
       READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     SearchSchema,
@@ -524,7 +524,7 @@ export const desktopUiTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "semantic_search",
-    "Semantic (embeddings) search — ranks pages and blocks by meaning, surfacing conceptually related content that keyword `search` misses. IMPORTANT: this is an opt-in feature that is NOT enabled on most graphs (it requires the user to turn on embeddings in Roam and be signed in), and there's no way to know in advance whether a given graph has it. Default to the regular `search` tool; reach for semantic_search only when the user explicitly asks for semantic/conceptual search, or when keyword search fell short and you want to try a meaning-based pass. If the graph hasn't enabled it, the tool returns an error telling you to use `search` instead — that's expected, fall back rather than surfacing it as a failure. Returns ranked markdown (best match first)." +
+    "Semantic (embeddings) search — ranks pages and blocks by meaning, surfacing conceptually related content that keyword `search` misses. IMPORTANT: this is an opt-in feature that is NOT enabled on most graphs (it requires the user to turn on embeddings in Roam and be signed in), and there's no way to know in advance whether a given graph has it. Default to the regular `search` tool; reach for semantic_search only when the user explicitly asks for semantic/conceptual search, or when keyword search fell short and you want to try a meaning-based pass. If the graph hasn't enabled it, the tool returns an error telling you to use `search` instead — that's expected, fall back rather than surfacing it as a failure. Returns ranked markdown (best match first). Long result blocks are capped: `truncated=\"N\"` on a `<roam>` tag means N characters were cut — get_block that uid for the full text before editing it." +
       READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     SemanticSearchSchema,

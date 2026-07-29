@@ -139,6 +139,8 @@ export async function getGuidelines(client: RoamActionClient): Promise<CallToolR
   return textResult({
     ...result,
     nextSteps,
+    // Keep roamSyntax AFTER ...result: its text says the graph's own `guidelines`
+    // are "above", which is only true while `guidelines` serializes first.
     // Graph-agnostic Roam agent-markdown guide (post-#2659 wire format). Present
     // regardless of whether the user authored their own `guidelines`. Reaches the
     // local transport and the hosted transport for NON-encrypted graphs (both
