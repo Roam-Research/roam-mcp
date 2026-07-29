@@ -83,7 +83,8 @@ real pages, refs, and checkboxes.
   optional `heading` (1–3), `childrenViewType`, `refs` (backlink count — high = edit with care),
   `hiddenChildren="N"` (the subtree was truncated by `maxDepth`; read deeper with a higher `maxDepth`
   before assuming you've seen everything), and `truncated="N"` (search/semantic results only: N
-  characters of a long block were cut — `get_block` the uid for the full text).
+  characters of a long block were cut — `get_block` the uid for the full text **before editing it**,
+  or a write-back would overwrite the block with just the visible prefix).
 - **Strip the whole `<roam .../>` tag** before showing content to the user. When **quoting or showing**
   the user their own notes, reproduce the text **verbatim** (don't silently reword or reformat). When
   the user explicitly asks you to summarize or transform, do that.
@@ -111,8 +112,13 @@ and why the round-trip behaves this way.
 ## Behavioral doctrine
 
 These are **defaults for when the user hasn't asked for a specific change** — explicit user intent
-always wins. If the user says "fix / rewrite / delete this block," do exactly that.
+always wins, and so does anything in the graph's own `[[roam/agent guidelines]]` (returned by
+`get_graph_guidelines`). If the user says "fix / rewrite / delete this block," do exactly that.
 
+- **One fact per block.** Nest details under a short lead block instead of writing long blocks —
+  blocks are the unit of reference, so long prose blocks defeat the outliner.
+- **Don't duplicate content across blocks or pages** — link it with `((block refs))` or
+  `[[page refs]]` instead.
 - **Append over edit.** Under ambiguity, add a child or sibling block rather than modifying existing
   content — especially human-authored blocks.
 - **Comment, don't rewrite.** To give feedback on someone's block, use `add_comment`, which preserves

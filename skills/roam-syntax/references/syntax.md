@@ -122,7 +122,9 @@ Body on the next line (Shift+Enter → \n in the block string)
 Types: `NOTE INFO SUMMARY TIP SUCCESS QUESTION WARNING FAILURE DANGER BUG EXAMPLE QUOTE` (append `+`/`-`
 to fold, e.g. `[[!TIP]]+`).
 
-Code: `` `inline` `` and fenced blocks with a language tag (held in one block). Images:
+Code: `` `inline` `` and fenced blocks with a language tag (held in one block). Don't leave a
+trailing newline before the closing fence — through `update_block` (literal) it's stored verbatim
+and Roam doesn't render it right (create ops normalize it away). Images:
 `![alt](https://url)` (`/upload` is a UI-only editor command). The **local/Desktop MCP** has a
 `file_upload` tool — upload, then write its returned URL as `![](url)`; the **hosted MCP has no upload
 tool**, so reference an already-hosted image URL. Horizontal rule: `---` alone in a block.

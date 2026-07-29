@@ -44,6 +44,12 @@ const INVARIANTS: { label: string; pattern: RegExp }[] = [
     pattern: /keep[\s\S]{0,25}\(\(uid\)\)<ref>[\s\S]{0,25}intact/i,
   },
   { label: "escape rule: live markup creates real pages", pattern: /creates?\s+real pages/i },
+  {
+    // partial-overwrite guard: editing a capped search result without a get_block reread
+    // would overwrite the block with just its visible prefix.
+    label: "truncated=N search results need a get_block before editing",
+    pattern: /truncated=[\s\S]{0,140}get_block/i,
+  },
 ];
 
 describe("roam-syntax: blob ↔ skill invariant coverage", () => {
@@ -87,7 +93,10 @@ describe("roam-syntax: forbidden regressions absent from blob + skill", () => {
 });
 
 describe("roam-syntax: blob stays lean", () => {
-  it("ROAM_SYNTAX is under ~650 tokens (≈2600 chars)", () => {
-    expect(ROAM_SYNTAX.length).toBeLessThan(2600);
+  it("ROAM_SYNTAX is under ~660 tokens (≈2650 chars)", () => {
+    // Raised 2600→2650 (2026-07-29) for the truncated="N" partial-overwrite guard and the
+    // no-duplication / guidelines-precedence lines from Josh's review. Don't creep further —
+    // depth belongs in the skill.
+    expect(ROAM_SYNTAX.length).toBeLessThan(2650);
   });
 });

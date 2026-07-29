@@ -17,7 +17,7 @@
  * page (surfaced separately as the `guidelines` field).
  */
 export const ROAM_SYNTAX = [
-  "Reading & writing a Roam graph — the gotchas that matter (Roam is an outliner; its markdown is NOT standard markdown). Full syntax, components, and queries live in the roam-syntax skill and Roam's help; this graph's own conventions are in the `guidelines` above.",
+  "Reading & writing a Roam graph — the gotchas that matter (Roam is an outliner; its markdown is NOT standard markdown). Full syntax, components, and queries live in the roam-syntax skill and Roam's help; this graph's own `guidelines` (above) take priority over these defaults.",
   "",
   "FORMATTING. Italics is `__text__` (double underscore) — always write that. `update_block` stores `*text*` / `_text_` as literal characters (not italics); create_page/create_block normalize them to `__text__`, but only `__text__` round-trips read↔write. Bold `**text**`, highlight `^^text^^`, strikethrough `~~text~~`.",
   "",
@@ -25,9 +25,9 @@ export const ROAM_SYNTAX = [
   "",
   'CREATE vs UPDATE. create_page / create_block PARSE markdown (everything here). update_block stores its string LITERALLY — no parsing, no new children — so use its `heading` / `childrenViewType` params for structure, and create_block for new nested content. A numbered list is `childrenViewType: "numbered"` on the parent (NOT `1.` markers); `childrenViewType` is a param on create_page / update_page / update_block, NOT create_block. Tables: write a normal pipe table (create ops convert it to a `{{[[table]]}}` block) — don\'t hand-build one.',
   "",
-  "LINKS. `[[Page Name]]` (creates the page + a backlink), `#tag`, `((uid))` (block reference). Link liberally — that's the point of Roam.",
+  "LINKS. `[[Page Name]]` (creates the page + a backlink), `#tag`, `((uid))` (block reference). Link liberally — and don't duplicate content across blocks or pages; reference it instead.",
   "",
-  'READING. Each block is `- <text> <roam uid="…"/>`; the tag may also carry `heading`, `childrenViewType`, `refs`, or `hiddenChildren="N"` (its subtree was truncated — read deeper). Strip the whole `<roam …/>` tag before showing content to the user. A block reference reads as `((uid))<ref>preview</ref>` — show the preview text when displaying.',
+  'READING. Each block is `- <text> <roam uid="…"/>`; the tag may also carry `heading`, `childrenViewType`, `refs`, `hiddenChildren="N"` (N child blocks not shown — read deeper), or `truncated="N"` on search results (N chars of a long block were cut — get_block the uid for the full text BEFORE editing it). Strip the whole `<roam …/>` tag before showing content to the user. A block reference reads as `((uid))<ref>preview</ref>` — show the preview text when displaying.',
   "",
   "WRITING BACK a block you read. Pass only the block content to update_block — drop the leading `- ` / indentation and the trailing `<roam …/>` tag — but KEEP any `((uid))<ref>…</ref>` intact; the server reduces it to `((uid))`. Do NOT write the display-cleaned preview alone, which replaces the live reference with static text.",
   "",
