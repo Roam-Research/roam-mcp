@@ -80,9 +80,10 @@ real pages, refs, and checkboxes.
 ```
 
 - The trailing **`<roam .../>` tag** carries metadata: `uid` (always — use for follow-up calls),
-  optional `heading` (1–3), `childrenViewType`, `refs` (backlink count — high = edit with care), and
+  optional `heading` (1–3), `childrenViewType`, `refs` (backlink count — high = edit with care),
   `hiddenChildren="N"` (the subtree was truncated by `maxDepth`; read deeper with a higher `maxDepth`
-  before assuming you've seen everything).
+  before assuming you've seen everything), and `truncated="N"` (search/semantic results only: N
+  characters of a long block were cut — `get_block` the uid for the full text).
 - **Strip the whole `<roam .../>` tag** before showing content to the user. When **quoting or showing**
   the user their own notes, reproduce the text **verbatim** (don't silently reword or reformat). When
   the user explicitly asks you to summarize or transform, do that.

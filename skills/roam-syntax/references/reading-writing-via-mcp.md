@@ -28,13 +28,14 @@ write actually stored what you intended.
 
 ## The `<roam>` tag
 
-| Attr               | Meaning                                                                           |
-| ------------------ | --------------------------------------------------------------------------------- |
-| `uid`              | always present; use for follow-up operations (get_block, update_block, refs…)     |
-| `heading`          | 1–3, only when the block is a heading                                             |
-| `childrenViewType` | `numbered`/`document`, only when not a plain bullet                               |
-| `refs`             | how many blocks reference this one; high = structurally important, edit with care |
-| `hiddenChildren`   | the subtree was truncated by `maxDepth`; read deeper before assuming you saw all  |
+| Attr               | Meaning                                                                                              |
+| ------------------ | ---------------------------------------------------------------------------------------------------- |
+| `uid`              | always present; use for follow-up operations (get_block, update_block, refs…)                        |
+| `heading`          | 1–3, only when the block is a heading                                                                |
+| `childrenViewType` | `numbered`/`document`, only when not a plain bullet                                                  |
+| `refs`             | how many blocks reference this one; high = structurally important, edit with care                    |
+| `hiddenChildren`   | the subtree was truncated by `maxDepth`; read deeper before assuming you saw all                     |
+| `truncated`        | (search/semantic results only) N chars of this block were cut; `get_block` the uid for the full text |
 
 **Strip the whole `<roam .../>` tag before showing content to a user.** Honor `heading` /
 `childrenViewType` when reconstructing structure.

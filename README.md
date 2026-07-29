@@ -197,9 +197,13 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 
 ## Hiding content from the AI
 
-Blocks tagged `#.rm-hide` or `#.rm-private` — and everything nested under them — are omitted from the content these tools return. The read tools that surface graph content to the AI (`get_page`, `get_block`, `get_backlinks`, `search`, `semantic_search`, `search_templates`, `roam_query`) all skip hidden subtrees. Both the hashtag (`#.rm-hide`) and link (`[[.rm-hide]]`) forms work; `.rm-private` is Roam's existing "hidden from other users" tag, while `.rm-hide` hides from the AI specifically.
+Blocks tagged `#.rm-hide` or `#.rm-private` — and everything nested under them — are omitted from the content these tools return. The read tools that surface graph content to the AI (`get_page`, `get_block`, `get_backlinks`, `search`, `semantic_search`, `roam_query`) all skip hidden subtrees. (`search_templates` is exempt: templates are shared building blocks, and its results are plain previews.) Both the hashtag (`#.rm-hide`) and link (`[[.rm-hide]]`) forms work; `.rm-private` is Roam's existing "hidden from other users" tag, while `.rm-hide` hides from the AI specifically.
 
 **This is a convenience filter, not a security guarantee.** The filtering is applied only to the AI content tools above. The raw `datalog_query` tool reads the database directly and does **not** apply it, so a capable agent could still surface hidden blocks through datalog. Don't rely on these tags for anything truly sensitive — treat them as "keep it out of the AI's way," not "keep it secret."
+
+## Agent skill: `roam-syntax`
+
+The [`skills/roam-syntax/`](skills/roam-syntax/) directory contains an [Agent Skill](https://agentskills.io) that teaches AI agents Roam's syntax and the MCP read/write model: Roam-flavored markdown (it differs from standard markdown — e.g. italics are `__text__`), how to read the `<roam .../>`-tagged output the read tools return, and how to write content back without corrupting block references. Agents connected through this MCP server get a compact version of the same guidance automatically (the `roamSyntax` field of `get_graph_guidelines` plus the tool descriptions); the skill adds depth — full syntax, `{{...}}` components, queries, and worked read→edit→write examples — for agent platforms that support skills (Claude Code, Claude.ai, Codex, …). To use it, copy `skills/roam-syntax/` into your agent's skills directory (e.g. `.claude/skills/`).
 
 ## CLI
 

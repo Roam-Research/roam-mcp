@@ -13,8 +13,13 @@ import { textResult } from "../types.js";
 // Schemas
 export const AddShortcutSchema = z.object({
   uid: z.string().describe("UID of the page to add to the left sidebar shortcuts"),
+  // .int().nonnegative() enforces the documented contract: the description promises a
+  // 0-based index. (Roam's preprocessor rejects fractions and clamps negatives, so loose
+  // values wouldn't corrupt anything — but they'd silently diverge from what was asked.)
   index: z.coerce
     .number()
+    .int()
+    .nonnegative()
     .optional()
     .describe(
       "0-based position in the shortcuts list. Omit to append at the end. Passing an index for an already-shortcutted page moves it to that position.",
