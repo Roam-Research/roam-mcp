@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { findTool, routeToolCall } from "../src/tools.js";
 import { ROAM_SYNTAX } from "../src/roam-syntax.js";
+import { RoamError, ErrorCodes } from "../src/types.js";
 
 // Core's routeToolCall has no defaults — it requires resolveGraph + createClient
 // in every call. These tests verify the contract that hosted MCP transports
@@ -248,5 +249,143 @@ describe("routeToolCall — append_to_daily_note", () => {
     expect(body.location["nest-under-str"]).toBe("TODOs");
     expect(body.location.order).toBe("last");
     expect(body["markdown-string"]).toBe("buy milk");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test G — call_extension_tool wire contract
+// ---------------------------------------------------------------------------
+// The tool id is opaque (qualified "<extension-id>/<name>" or bare "<name>") and
+// must pass through verbatim; `args` keys are the extension's own schema and must
+// be forwarded untouched, but the key must be absent from the wire when the
+// caller omits it.
+describe("routeToolCall — call_extension_tool", () => {
+  it("passes {tool, args} as the single object arg and returns the result verbatim", async () => {
+    const callSpy = vi.fn().mockResolvedValue({
+      success: true,
+      result: {
+        tool: "my-ext/make-card",
+        result: { created: true },
+        queriedAt: "2026-07-23T00:00:00Z",
+      },
+    });
+
+    const result = await routeToolCall(
+      "call_extension_tool",
+      { tool: "my-ext/make-card", args: { front: "hi", "block/uid": "abc" }, graph: "test" },
+      {
+        resolveGraph: async () => ({ name: "test-graph", type: "offline", nickname: "test" }),
+        createClient: () => ({ call: callSpy }),
+        tokenInfoMode: "skip",
+      },
+    );
+
+    expect(result.isError).toBeFalsy();
+    expect(callSpy).toHaveBeenCalledWith("data.ai.callExtensionTool", [
+      { tool: "my-ext/make-card", args: { front: "hi", "block/uid": "abc" } },
+    ]);
+    const parsed = JSON.parse((result.content[0] as { text: string }).text);
+    expect(parsed.tool).toBe("my-ext/make-card");
+    expect(parsed.result).toEqual({ created: true });
+  });
+
+  it("omits the args key from the wire entirely when the caller passes none", async () => {
+    const callSpy = vi.fn().mockResolvedValue({
+      success: true,
+      result: { tool: "graph-stats", result: { pages: 1 }, queriedAt: "2026-07-23T00:00:00Z" },
+    });
+
+    await routeToolCall(
+      "call_extension_tool",
+      { tool: "graph-stats", graph: "test" },
+      {
+        resolveGraph: async () => ({ name: "test-graph", type: "offline", nickname: "test" }),
+        createClient: () => ({ call: callSpy }),
+        tokenInfoMode: "skip",
+      },
+    );
+
+    const [, wireArgs] = callSpy.mock.calls[0];
+    expect((wireArgs as unknown[])[0]).toEqual({ tool: "graph-stats" });
+    expect(Object.keys((wireArgs as unknown[])[0] as object)).not.toContain("args");
+  });
+
+  // The feature shipped as an API patch revision, so the major.minor version
+  // gate can't flag a desktop build that predates it — the raw UNKNOWN_ACTION
+  // ("Unknown API action") is the only signal, and it must become actionable
+  // advice rather than reach the model as-is.
+  it("maps UNKNOWN_ACTION from a pre-feature app build to an update-Roam message", async () => {
+    const result = await routeToolCall(
+      "call_extension_tool",
+      { tool: "graph-stats", graph: "test" },
+      {
+        resolveGraph: async () => ({ name: "test-graph", type: "offline", nickname: "test" }),
+        createClient: () => ({
+          call: async () => {
+            throw new RoamError(
+              "Unknown API action: API action not found: data.ai.callExtensionTool",
+              ErrorCodes.UNKNOWN_ACTION,
+            );
+          },
+        }),
+        tokenInfoMode: "skip",
+      },
+    );
+
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse((result.content[0] as { text: string }).text);
+    expect(parsed.error.code).toBe(ErrorCodes.UNKNOWN_ACTION);
+    expect(parsed.error.message).toContain("Update Roam Desktop");
+    expect(parsed.error.message).not.toContain("Unknown API action");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test H — get_graph_guidelines passes extensionTools through
+// ---------------------------------------------------------------------------
+// The local backend includes extensionTools only when tools are registered;
+// when present it must survive to the output (with nextSteps pointing at
+// call_extension_tool), and when absent nothing may fabricate it.
+describe("routeToolCall — get_graph_guidelines extensionTools passthrough", () => {
+  const baseGuidelines = {
+    guidelines: null,
+    starredPages: [],
+    todaysDailyNotePage: null,
+  };
+  const options = (result: Record<string, unknown>) => ({
+    resolveGraph: async () => ({
+      name: "test-graph",
+      type: "offline" as const,
+      nickname: "test",
+    }),
+    createClient: () => ({ call: async () => ({ success: true, result }) }),
+    tokenInfoMode: "skip" as const,
+  });
+
+  it("surfaces extensionTools and points nextSteps at call_extension_tool", async () => {
+    const extensionTools = [
+      { tool: "graph-stats", description: "Counts pages and blocks", scope: "read" },
+    ];
+    const result = await routeToolCall(
+      "get_graph_guidelines",
+      { graph: "test" },
+      options({ ...baseGuidelines, extensionTools }),
+    );
+
+    const parsed = JSON.parse((result.content[0] as { text: string }).text);
+    expect(parsed.extensionTools).toEqual(extensionTools);
+    expect(parsed.nextSteps).toContain("call_extension_tool");
+  });
+
+  it("omits extensionTools and the pointer when the backend sends none", async () => {
+    const result = await routeToolCall(
+      "get_graph_guidelines",
+      { graph: "test" },
+      options(baseGuidelines),
+    );
+
+    const parsed = JSON.parse((result.content[0] as { text: string }).text);
+    expect(parsed).not.toHaveProperty("extensionTools");
+    expect(parsed.nextSteps).not.toContain("call_extension_tool");
   });
 });

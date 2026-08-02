@@ -109,6 +109,7 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 
 - `search` - Search pages/blocks (empty query returns recently edited/viewed content)
 - `semantic-search` - Semantic (embeddings) search by meaning; requires embeddings enabled and a signed-in user
+- `suggest-links` - Suggest existing pages worth linking to from a passage of text (does not create links)
 - `search-templates` - Search Roam templates by name
 - `roam-query` - Execute a Roam query (`{{query:}}` blocks, not Datalog)
 - `datalog-query` - Execute a raw Datalog query against the graph's Datomic database
@@ -133,6 +134,11 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 - `file-get` - Fetch a file hosted on Roam (handles decryption for encrypted graphs)
 - `file-upload` - Upload a file to Roam (from local path, URL, or base64)
 - `file-delete` - Delete a file hosted on Roam
+
+**Developer:**
+
+- `reload-dev-extensions` - Reload all developer-mode extensions in Roam Desktop (apply code changes without restarting)
+- `call-extension-tool` - Invoke an AI tool registered by a Roam extension or roam/js script (discover available tools via the `extensionTools` field of `get-graph-guidelines`; pass tool arguments as JSON, e.g. `--args '{"key": "value"}'`)
 
 ## Hiding content from the AI
 

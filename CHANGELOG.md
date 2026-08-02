@@ -1,5 +1,96 @@
 # Changelog
 
+## 0.9.2 - 2026-07-29
+
+- **New local-only tool: `call_extension_tool`** (`data.ai.callExtensionTool`) — invokes AI
+  tools that Roam extensions and roam/js scripts register at runtime. Takes `tool` (the id
+  exactly as advertised — opaque: qualified `<extension-id>/<name>` for extension-registered
+  tools, bare `<name>` for roamAlphaAPI-registered ones; never parse or construct it) and
+  optional `args` (a JSON object matching the tool's advertised `inputSchema`). Registered in
+  `desktopUiTools`: the hosted backend serves from a peer replica with no channel to a live
+  client, so this tool must never reach the hosted server. Annotations are worst-case
+  (destructive, non-idempotent, open-world) since the tool runs arbitrary extension handler
+  code.
+- **All validation is renderer-side; error guidance reaches the model.** Roam meta-validates
+  schemas at registration and validates the AI's `args` against the tool's `inputSchema`
+  (draft-07) before the handler runs — roam-tools deliberately ships no validator, keeping
+  the transport a dumb pipe. The three error classes (unknown tool — lists the currently
+  available ids; args/schema mismatch — names the violations; handler failure) are written
+  for model self-correction; their message text reaches the model, though the local client
+  wraps them as `Server error: <message>` with code `INTERNAL_ERROR` (they arrive as
+  Local API 500s). One exception: an app build without the feature returns
+  `UNKNOWN_ACTION`, which the tool maps to a friendly "update Roam Desktop" message — the
+  API-version gate can't detect this case (see below).
+- Mixed versions: a **pre-0.9.2 roam-tools against a newer Roam Desktop** still forwards
+  `extensionTools` in `get_graph_guidelines` (the field passes through `...result`) but has
+  no `call_extension_tool` to invoke them — upgrade roam-tools to invoke.
+- **`get_graph_guidelines` now surfaces `extensionTools`** — the local backend's listing of
+  registered extension AI tools (`{tool, description, scope, extension?, inputSchema?}`),
+  present only when non-empty and only on the local transport. When present, `nextSteps`
+  points the agent at `call_extension_tool`. Content-only as before (no `outputSchema`).
+- **CLI: JSON flags for non-flat tool params.** The generated commands now parse
+  object/record/array-typed fields as JSON strings (`roam call-extension-tool --tool x
+--args '{"key": "value"}'`), with a clear error on invalid JSON. This also fixes
+  `datalog-query --inputs`, which previously passed the raw string through and always
+  failed Zod validation.
+- **`EXPECTED_API_VERSION` 1.1.3 → 1.1.5** — the extension-AI-tools feature shipped as Local
+  API `1.1.5`, a patch revision. Roam's version gate matches major.minor exactly and ignores
+  patch, so compatibility with older builds is unchanged — which also means the gate **cannot
+  detect** a desktop build that predates the feature. Older builds return `UNKNOWN_ACTION`
+  for `data.ai.callExtensionTool` (mapped to the friendly update message above) and simply
+  omit `extensionTools` from guidelines.
+
+## 0.9.1 - 2026-07-20
+
+- **Two new local-only tools**, each surfacing an existing Roam Local API action. No
+  API-version change: both actions already ship at `1.1.3`, which matches
+  `EXPECTED_API_VERSION`, so this is purely a roam-tools-side addition.
+  - **`suggest_links`** (`data.ai.suggestLinks`) — given a passage of `text`, suggests
+    existing pages worth linking to, ranked most-plausible first. Suggestion-only: it
+    does not create links. Optional `maxResults` (default 20).
+  - **`reload_dev_extensions`** (`depot.reloadDeveloperExtensions`) — reloads all
+    developer-mode extensions in Roam Desktop (the `C-d C-r` command), returning the
+    reloaded `{id, name}` list.
+- **Both are registered in `desktopUiTools`** (renderer-only Local API actions with no
+  hosted-MCP counterpart yet, alongside `semantic_search`). MCP tool registration and CLI
+  command generation are registry-driven, so they surface automatically as the
+  `suggest_links` / `reload_dev_extensions` MCP tools and `suggest-links` /
+  `reload-dev-extensions` CLI commands — no per-tool edits to `mcp`/`cli` were needed. Both
+  are content-only (no `outputSchema`): the returned data is what the agent reads, which
+  also sidesteps the ChatGPT stale-cache hazard write-schemas carry.
+- **Runtime dependency to note:** `reload_dev_extensions` needs a Roam Desktop build from
+  **2026-07-16** or later (the build that exposed `depot.reloadDeveloperExtensions` on
+  `roamAlphaAPI`); older builds return `UNKNOWN_ACTION`. `suggest_links` needs a build from
+  **2026-07-08** or later. This is independent of the npm package version.
+
+## 0.9.0 - 2026-07-15
+
+- **New local-only tool: `semantic_search`** (embeddings) — ranks pages and blocks by
+  meaning, surfacing conceptually related content that keyword `search` misses. Opt-in: it
+  requires the user to enable embeddings in Roam and be signed in, and returns an error
+  telling the agent to fall back to `search` when the graph hasn't enabled it. Registered
+  as a `desktopUiTool` (needs the renderer's search worker + embeddings index, which the
+  hosted MCP backend has no counterpart for).
+- **New local-only tools: `add_shortcut` / `remove_shortcut`** — add or remove a page in
+  the graph's left-sidebar Shortcuts (the starred/pinned pages `get_graph_guidelines`
+  reports as `starredPages`). `add_shortcut` takes an optional `index` to position it.
+  Registered as `desktopUiTools` for now; promote to `dataTools` once the hosted backend
+  confirms `data.page.addShortcut` / `removeShortcut`.
+- **Fix: `file_upload` MIME detection for non-image files** (#21) — non-image uploads now
+  resolve the correct content type.
+- **Packaging fix: stop publishing the `development` export condition** that pointed at
+  unshipped `src` (#30). A published `development → ./src/*.ts` condition broke any
+  downstream consumer whose resolver enables it (Vite/Vitest, Next dev/Turbopack), because
+  `files` ships only `dist/`. Source resolution now lives in the never-published
+  `tsconfig.dev.json`. Do **not** re-add a `development` condition to any package's `exports`.
+- **`EXPECTED_API_VERSION` 1.1.2 → 1.1.3** — a patch bump. Roam matches major.minor exactly
+  and ignores patch, so this stays compatible with the same Roam builds `0.8.x` targeted;
+  the bump just tracks a non-breaking Local API revision. (An intermediate `1.2.0` bump
+  during development was walked back before release — the published `0.9.0` carries `1.1.3`.)
+- **Docs:** documented `((uid))<ref>text</ref>` block-ref previews in the `get_page` /
+  `get_block` tool descriptions, and the `#.rm-hide` / `#.rm-private` AI-content-hiding tags
+  in the READMEs.
+
 ## 0.8.1 - 2026-07-09
 
 _No runtime change: `core`'s `dist` is byte-identical to `core@0.8.0` once comments are stripped._

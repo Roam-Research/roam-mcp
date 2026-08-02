@@ -75,6 +75,13 @@ import {
   addShortcut,
   removeShortcut,
 } from "./operations/shortcuts.js";
+import {
+  ReloadDevExtensionsSchema,
+  CallExtensionToolSchema,
+  reloadDevExtensions,
+  callExtensionTool,
+} from "./operations/extensions.js";
+import { SuggestLinksSchema, suggestLinks } from "./operations/links.js";
 
 // Common schema for graph parameter (used by most tools)
 const GraphSchema = z.object({
@@ -214,7 +221,8 @@ export const DEFAULT_MCP_INSTRUCTIONS =
 // whose config write IS its purpose, so it is not read-only.
 //
 // openWorldHint is false for every tool except file_upload (its url path fetches
-// an arbitrary external host server-side).
+// an arbitrary external host server-side) and call_extension_tool (arbitrary
+// extension handler code).
 // ----------------------------------------------------------------------------
 const READ: ToolAnnotations = {
   readOnlyHint: true,
@@ -261,6 +269,28 @@ const SHORTCUT: ToolAnnotations = {
   destructiveHint: false,
   idempotentHint: true,
   openWorldHint: false,
+};
+// reload_dev_extensions re-runs developer extension code (a dev-loop action). It
+// doesn't mutate page/block content itself, so non-destructive; reloading twice
+// lands the same end state, so idempotent. Local Roam Desktop only.
+const DEV: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+// call_extension_tool runs arbitrary extension-registered handler code, so its
+// real effects depend entirely on the target tool. Each advertises a
+// read/append/edit scope, but that only gates the CALLER'S TOKEN renderer-side —
+// it does not constrain what the handler actually does (extension code runs with
+// full ambient authority). Hints must cover the worst case: possibly
+// destructive, not idempotent, and open-world (a handler can reach external
+// services).
+const EXTENSION: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: false,
+  openWorldHint: true,
 };
 
 // ----------------------------------------------------------------------------
@@ -521,6 +551,30 @@ export const desktopUiTools: ClientToolDefinition[] = [
     RemoveShortcutSchema,
     removeShortcut,
     { title: "Remove shortcut", annotations: SHORTCUT },
+  ),
+  defineTool(
+    "suggest_links",
+    "Suggest existing Roam pages worth linking to from a passage of `text`, ranked most-plausible first, to turn into [[links]]. It only suggests — it does not create links." +
+      GUIDELINES_NOTE,
+    SuggestLinksSchema,
+    suggestLinks,
+    { title: "Suggest links", annotations: READ },
+  ),
+  defineTool(
+    "reload_dev_extensions",
+    "Reload all developer-mode extensions in Roam Desktop. Use during extension development to apply code changes without restarting Roam. Returns the list of reloaded extensions ({id, name})." +
+      GUIDELINES_NOTE,
+    ReloadDevExtensionsSchema,
+    reloadDevExtensions,
+    { title: "Reload developer extensions", annotations: DEV },
+  ),
+  defineTool(
+    "call_extension_tool",
+    "Invoke an AI tool registered at runtime by a Roam extension in the local Roam Desktop app. Available tools are listed in get_graph_guidelines' `extensionTools` field (absent when the graph has none) with each tool's id, description, scope, and input schema. Pass `tool` exactly as listed (ids are opaque — never construct or parse them) and `args` matching that entry's inputSchema. A tool's `scope` is what its extension declares it needs — it is NOT enforced on the tool's behavior, so treat every call as potentially modifying the graph." +
+      GUIDELINES_NOTE,
+    CallExtensionToolSchema,
+    callExtensionTool,
+    { title: "Call extension AI tool", annotations: EXTENSION },
   ),
   defineTool(
     "semantic_search",
