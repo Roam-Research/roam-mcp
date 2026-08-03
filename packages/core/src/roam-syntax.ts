@@ -17,7 +17,7 @@
  * page (surfaced separately as the `guidelines` field).
  */
 export const ROAM_SYNTAX = [
-  "Reading & writing a Roam graph — the gotchas that matter (Roam is an outliner; its markdown is NOT standard markdown). Full syntax, components, and queries live in the roam-syntax skill and Roam's help; this graph's own `guidelines` (above) take priority over these defaults.",
+  "Reading & writing a Roam graph — the gotchas that matter (Roam is an outliner; its markdown is NOT standard markdown). Full syntax, components, and queries live in the roam-syntax skill (if installed) and Roam's help; this graph's own `guidelines` (above) take priority over these defaults.",
   "",
   "FORMATTING. Italics is `__text__` (double underscore) — always write that. `update_block` stores `*text*` / `_text_` as literal characters (not italics); create_page/create_block normalize them to `__text__`, but only `__text__` round-trips read↔write. Bold `**text**`, highlight `^^text^^`, strikethrough `~~text~~`.",
   "",
