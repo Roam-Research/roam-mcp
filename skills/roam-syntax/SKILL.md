@@ -81,7 +81,7 @@ real pages, refs, and checkboxes.
 
 - The trailing **`<roam .../>` tag** carries metadata: `uid` (always — use for follow-up calls),
   optional `heading` (1–3), `childrenViewType`, `refs` (backlink count — high = edit with care),
-  `hiddenChildren="N"` (the subtree was truncated by `maxDepth`; read deeper with a higher `maxDepth`
+  `hiddenChildren="N"` (the subtree was cut off by `maxDepth`; read deeper with a higher `maxDepth`
   before assuming you've seen everything), and `truncated="N"` (search/semantic results only: N
   characters of a long block were cut — `get_block` the uid for the full text **before editing it**,
   or a write-back would overwrite the block with just the visible prefix).
@@ -105,6 +105,11 @@ real pages, refs, and checkboxes.
   - Do **not** write the display-cleaned preview alone (the `<ref>` text without its `((uid))`) — that
     replaces the live reference with static text. A tags-only strip that leaves the preview behind
     stores it as duplicate content.
+  - Editing text **inside** a `<ref>…</ref>` preview is a silent no-op — the server discards the
+    preview on write and keeps only `((uid))`. To change the previewed text itself: `get_block` the
+    **referenced** uid (it's the `((uid))` in the annotation), then edit its full returned content
+    with this same write-back procedure — don't reconstruct it from the preview, which may be
+    capped or have nested refs flattened.
 
 See `references/reading-writing-via-mcp.md` for worked read→edit→write examples that don't lose refs,
 and why the round-trip behaves this way.
@@ -112,8 +117,11 @@ and why the round-trip behaves this way.
 ## Behavioral doctrine
 
 These are **defaults for when the user hasn't asked for a specific change** — explicit user intent
-always wins, and so does anything in the graph's own `[[roam/agent guidelines]]` (returned by
-`get_graph_guidelines`). If the user says "fix / rewrite / delete this block," do exactly that.
+always wins, and the graph's own `[[roam/agent guidelines]]` (returned by `get_graph_guidelines`)
+govern style and conventions. The **syntax and data-integrity rules** in this skill apply
+regardless: no convention can make `update_block` parse markdown, make a truncated prefix
+complete, or keep a reference live after its `((uid))` is dropped. If the user says "fix /
+rewrite / delete this block," do exactly that.
 
 - **One fact per block.** Nest details under a short lead block instead of writing long blocks —
   blocks are the unit of reference, so long prose blocks defeat the outliner.
@@ -129,9 +137,10 @@ always wins, and so does anything in the graph's own `[[roam/agent guidelines]]`
   also rewrites every block that referenced the target.
 - **Respect load-bearing blocks.** A block with a high `refs` count is structurally important — edit
   it with extra care.
-- **Link liberally, but don't fabricate block refs.** Write `[[Page]]` freely (it creates the page +
-  a backlink). Use `((uid))` only for blocks already in your working context — don't search the graph
-  just to manufacture a block ref.
+- **Create page links intentionally, and don't fabricate block refs.** `[[Page]]` links AND mints
+  the page if it doesn't exist — link entities that genuinely recur, don't bracket every noun. Use
+  `((uid))` only for blocks already in your working context — don't search the graph just to
+  manufacture a block ref.
 - **Search before create; read before write.** Check whether a page/section already exists, and read
   existing content before changing it.
 

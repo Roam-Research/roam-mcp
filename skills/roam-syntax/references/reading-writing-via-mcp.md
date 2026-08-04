@@ -34,7 +34,7 @@ write actually stored what you intended.
 | `heading`          | 1–3, only when the block is a heading                                                                |
 | `childrenViewType` | `numbered`/`document`, only when not a plain bullet                                                  |
 | `refs`             | how many blocks reference this one; high = structurally important, edit with care                    |
-| `hiddenChildren`   | the subtree was truncated by `maxDepth`; read deeper before assuming you saw all                     |
+| `hiddenChildren`   | the subtree was cut off by `maxDepth`; read deeper before assuming you saw all                       |
 | `truncated`        | (search/semantic results only) N chars of this block were cut; `get_block` the uid for the full text |
 
 **Strip the whole `<roam .../>` tag before showing content to a user.** Honor `heading` /
@@ -83,13 +83,19 @@ leading `- ` (the server decodes the `<roam>` tag away, but the bullet is stored
 If you strip annotations by hand instead of relying on the decode, remove `<ref>preview</ref>` while
 keeping its preceding `((uid))` — a tags-only strip leaves the preview as duplicate content.
 
+**Editing inside a `<ref>…</ref>` preview is a silent no-op**: the server reduces the whole
+annotation to `((uid))` and discards your changes (the call still returns success). To change the
+previewed text itself: `get_block` the **referenced** uid, then apply the normal write-back to its
+full returned content. Never reconstruct the block from the preview — previews are not canonical
+source (they can be capped, and nested refs are resolved inside them).
+
 ## Which tool for what
 
 | Goal                              | Tool                                                                                               |
 | --------------------------------- | -------------------------------------------------------------------------------------------------- |
 | New page (optionally with body)   | `create_page` (parses markdown)                                                                    |
 | New block(s), possibly nested     | `create_block` (parses markdown; target by parentUid/pageTitle/dailyNotePage; `nestUnder` a child) |
-| Quick capture to a daily note     | `append_to_daily_note` (append-only)                                                               |
+| Quick capture to a daily note     | `append_to_daily_note` (append-only; parses markdown trees like the create ops)                    |
 | Edit one block's text             | `update_block` (literal string; + `heading`/`childrenViewType` params)                             |
 | Reorder / reparent a block        | `move_block`                                                                                       |
 | Set a heading / numbered children | `update_block` params (not `#` / `1.` in the string)                                               |
@@ -103,8 +109,10 @@ keeping its preceding `((uid))` — a tags-only strip leaves the preview as dupl
 ## Transport note
 
 There are two servers (local Desktop, hosted/remote) sharing the parsing/rendering code, so this model
-holds on both — with one accepted difference: an ordered-list marker (`1.`) is kept as literal text
-locally but dropped remotely; either way it never produces a numbered list (use `childrenViewType`).
+holds on both — with one accepted difference: ordered-list markers (`1.`) are **not portable**. The
+local parser keeps them as literal text; the hosted parser strips them and, when they're nested under
+a bullet, may convert the parent to a numbered view. Never rely on them — set `childrenViewType`
+explicitly.
 
 A genuine user alias `[label](((uid)))` is distinct from a block reference: the alias stays raw on read
 (and writes back unchanged — the server only decodes `((uid))<ref>…</ref>`), while a reference reads as

@@ -53,7 +53,8 @@ type them without the backticks to make them live.
 ```
 
 `[[Page]]` and `#Page`/`#[[Page]]` are functionally identical (both create the page + a backlink); `#`
-just renders gray. **Mention an entity → link it.**
+just renders gray. **Link entities that genuinely recur — but create page links intentionally:
+linking a page that doesn't exist mints it.**
 
 ### Aliases
 

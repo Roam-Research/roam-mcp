@@ -9,9 +9,15 @@
   (`heading`/`childrenViewType`/`refs`/`hiddenChildren`/`truncated` attrs, `((uid))<ref>preview</ref>`
   block references), and how to write back without corrupting content (pass only the block content
   to `update_block`; keep `((uid))<ref>…</ref>` intact — the server reduces it to `((uid))`;
-  re-read `truncated="N"` search results via `get_block` before editing). Canonical source:
-  `packages/core/src/roam-syntax.ts` (exported as `ROAM_SYNTAX`). The graph's own
-  `[[roam/agent guidelines]]` take priority over these defaults.
+  re-read `truncated="N"` search results via `get_block` before editing). Damage-ranked
+  structure: the write-back procedure leads as explicit steps with one worked example, and a
+  short checksum repeats it at the end. Canonical source: `packages/core/src/roam-syntax.ts`
+  (exported as `ROAM_SYNTAX`). The graph's own `[[roam/agent guidelines]]` govern style and
+  conventions; the data-integrity rules apply regardless. Also exported:
+  **`ROAM_SYNTAX_APPEND_ONLY`** — the subset for append-only connections (encrypted graphs:
+  `get_graph_guidelines` + `append_to_daily_note` only), composed from the same section constants
+  so it can't drift, with everything referencing tools an append-only agent lacks removed. For the
+  hosted encrypted-guidelines path to import.
 - **Read-tool descriptions teach the wire format**: a shared format note on the 7 read tools that
   emit `<roam>`-tagged markdown (`get_page`, `get_block`, `get_backlinks`, `search`,
   `get_comments`, `roam_query`, `semantic_search`), plus a `truncated="N"` partial-overwrite

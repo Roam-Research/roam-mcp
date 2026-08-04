@@ -91,4 +91,4 @@ export { localTodayString } from "./relative-date.js";
 
 // Canonical Roam agent-markdown guide (also returned as get_graph_guidelines'
 // `roamSyntax` field). Exported so the skill consistency test can key off it.
-export { ROAM_SYNTAX } from "./roam-syntax.js";
+export { ROAM_SYNTAX, ROAM_SYNTAX_APPEND_ONLY } from "./roam-syntax.js";

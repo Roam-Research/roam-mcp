@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { ROAM_SYNTAX } from "../src/roam-syntax.js";
+import { ROAM_SYNTAX, ROAM_SYNTAX_APPEND_ONLY } from "../src/roam-syntax.js";
+import { dataTools, desktopUiTools } from "../src/tools.js";
 
 // The shipped skill (repo-root skills/) must restate the blob's load-bearing invariants. Reading it
 // throws (a HARD failure) if SKILL.md is missing or renamed — Part 2 (skill) and Part 3 (this test)
@@ -100,10 +101,115 @@ describe("roam-syntax: forbidden regressions absent from blob + skill", () => {
 });
 
 describe("roam-syntax: blob stays lean", () => {
-  it("ROAM_SYNTAX is under ~660 tokens (≈2650 chars)", () => {
-    // Raised 2600→2650 (2026-07-29) for the truncated="N" partial-overwrite guard and the
-    // no-duplication / guidelines-precedence lines from Josh's review. Don't creep further —
-    // depth belongs in the skill.
-    expect(ROAM_SYNTAX.length).toBeLessThan(2650);
+  it("ROAM_SYNTAX is under ~700 tokens (≈2800 chars)", () => {
+    // 2600→2650 (07-29): truncated guard + no-duplication + precedence lines.
+    // 2650→2800 (08-04): the damage-ranked restructure (worked example + end checksum)
+    // and the create-tree clause (nested `- ` tree in one call — the most-used write path).
+    // Don't creep further — depth belongs in the skill.
+    expect(ROAM_SYNTAX.length).toBeLessThan(2800);
+  });
+});
+
+describe("roam-syntax: append-only subset (encrypted graphs)", () => {
+  // Split a blob into its sections keyed by the leading ALL-CAPS label.
+  const sections = (blob: string): Record<string, string> =>
+    Object.fromEntries(blob.split("\n\n").map((s) => [s.split(".")[0], s]));
+
+  it("stays a true subset: the shared sections are IDENTICAL where fully shared", () => {
+    // The subset composes from the same section constants as the full blob.
+    // ESCAPING is fully shared → must be byte-identical. LINKS and FORMATTING
+    // are parameterized (per-audience tail/parenthetical) → their shared parts
+    // must be byte-identical: the LINKS prefix up to the ref clause, and the
+    // FORMATTING tail after the italics parenthetical.
+    const full = sections(ROAM_SYNTAX);
+    const sub = sections(ROAM_SYNTAX_APPEND_ONLY);
+
+    expect(sub.ESCAPING).toBe(full.ESCAPING);
+
+    const linksPrefix = (s: string) => s.slice(0, s.indexOf("`((uid))`"));
+    expect(linksPrefix(sub.LINKS)).not.toBe("");
+    expect(linksPrefix(sub.LINKS)).toBe(linksPrefix(full.LINKS));
+
+    const fmtTail = (s: string) => s.slice(s.indexOf(". Bold `**text**`"));
+    expect(fmtTail(sub.FORMATTING).length).toBeGreaterThan(100);
+    expect(fmtTail(sub.FORMATTING)).toBe(fmtTail(full.FORMATTING));
+
+    // And the shared tree clause appears in both (full: CREATE section; subset: WRITING).
+    const tree = "nested `- ` bullet tree (indentation = children)";
+    expect(ROAM_SYNTAX).toContain(tree);
+    expect(ROAM_SYNTAX_APPEND_ONLY).toContain(tree);
+  });
+
+  it("never mentions any tool outside its two-tool surface (derived from the registry)", () => {
+    // Derived, not hand-maintained: every registered tool name except the two an
+    // append-only connection actually has. Word-boundary matching so e.g. the
+    // tool name "search" can't false-positive on words like "Research".
+    const APPEND_ONLY_SURFACE = new Set(["get_graph_guidelines", "append_to_daily_note"]);
+    const allToolNames = [...dataTools, ...desktopUiTools].map((t) => t.name);
+    expect(allToolNames.length).toBeGreaterThan(20); // registry actually loaded
+    for (const name of allToolNames) {
+      if (APPEND_ONLY_SURFACE.has(name)) continue;
+      const wordBounded = new RegExp(`(^|[^A-Za-z_])${name}($|[^A-Za-z_])`, "i");
+      expect(ROAM_SYNTAX_APPEND_ONLY, name).not.toMatch(wordBounded);
+    }
+  });
+
+  it("never mentions read-format constructs or state-discovery instructions it can't use", () => {
+    for (const forbidden of [
+      "truncated",
+      "<ref>",
+      "<roam",
+      "WRITE-BACK",
+      // no instruction may presuppose state discovery this agent can't do:
+      // "reference it instead" implies finding existing blocks/uids, which a
+      // read-less agent can only satisfy by INVENTING a uid.
+      "reference it instead",
+      "don't duplicate",
+    ]) {
+      // case-insensitive: a rewording like "Don't"→"don't" must not evade the guard
+      expect(ROAM_SYNTAX_APPEND_ONLY.toLowerCase(), forbidden).not.toContain(
+        forbidden.toLowerCase(),
+      );
+    }
+  });
+
+  it("tells the read-less agent to never invent uids", () => {
+    expect(ROAM_SYNTAX_APPEND_ONLY).toContain("never invent a uid");
+    expect(ROAM_SYNTAX_APPEND_ONLY).toContain("cannot read the graph");
+  });
+
+  it("warns the read-less agent off numbered-list markers (unfixable-damage class)", () => {
+    // append_to_daily_note has no childrenViewType param and the agent can never
+    // revise — `1.` markers would be permanent broken output. Instruction-only
+    // phrasing on purpose: parser behavior for ordered markers DIVERGES by
+    // transport (local keeps literal; hosted strips, and nested ones can even
+    // convert to a numbered view — markdown_fixtures.cljc), so any behavioral
+    // claim here would be false somewhere.
+    expect(ROAM_SYNTAX_APPEND_ONLY).toMatch(/plain `- ` bullets, never `1\.` numbered markers/);
+  });
+
+  it("stays small (append-only agents have tiny tool surfaces)", () => {
+    expect(ROAM_SYNTAX_APPEND_ONLY.length).toBeLessThan(1600);
+  });
+});
+
+describe("roam-syntax: worked example stays internally consistent", () => {
+  it("the example's UPDATE string is exactly the READ line minus bullet and tag", () => {
+    // Pins the (b)(c) transform the example demonstrates: if either side of the
+    // example is edited, the other must move with it.
+    const read = '- See ((abc))<ref>Plan</ref> <roam uid="x"/>';
+    const update = "See ((abc))<ref>Plan</ref>";
+    expect(ROAM_SYNTAX).toContain(`READ: \`${read}\``);
+    expect(ROAM_SYNTAX).toContain(`update_block string: \`${update}\``);
+    expect(read.replace(/^- /, "").replace(/ <roam [^>]*\/>$/, "")).toBe(update);
+  });
+
+  it("the 1.-marker claim stays at non-portability (the only transport-safe claim)", () => {
+    // Ordered-marker behavior diverges: local keeps `1.` as literal text; the
+    // hosted parser strips it and a NESTED ordered list can convert the parent
+    // to a numbered view (relemma markdown_fixtures.cljc, ordered-list-nested-
+    // under-bullet). So neither "stays literal" nor "never produces a numbered
+    // list" is true everywhere — only non-portability is. Pin that wording.
+    expect(ROAM_SYNTAX).toMatch(/1\.` markers aren't portable/);
   });
 });
