@@ -570,7 +570,7 @@ export const desktopUiTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "call_extension_tool",
-    "Invoke an AI tool registered at runtime by a Roam extension in the local Roam Desktop app. Available tools are listed in get_graph_guidelines' `extensionTools` field (absent when the graph has none) with each tool's id, description, scope, and input schema. Pass `tool` exactly as listed (ids are opaque — never construct or parse them) and `args` matching that entry's inputSchema. A tool's `scope` is what its extension declares it needs — it is NOT enforced on the tool's behavior, so treat every call as potentially modifying the graph." +
+    "Invoke an AI tool registered at runtime by a Roam extension in the local Roam Desktop app. Available tools are listed in get_graph_guidelines' `extensionTools` field (absent when the graph has none) with each tool's id, description, scope, and input schema. Pass `tool` exactly as listed (ids are opaque — never construct or parse them) and `args` matching that entry's inputSchema. A tool's `scope` is what its extension declares it needs — it is NOT enforced on the tool's behavior, so treat every call as potentially modifying the graph. Handlers have a 60-second deadline; a timed-out handler may STILL complete its side effects, so do not blindly retry after a timeout — you risk duplicate writes." +
       GUIDELINES_NOTE,
     CallExtensionToolSchema,
     callExtensionTool,
