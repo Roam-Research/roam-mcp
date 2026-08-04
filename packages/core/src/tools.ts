@@ -184,6 +184,15 @@ export function defineStandaloneTool<T extends z.ZodRawShape>(
 const GUIDELINES_NOTE =
   "\n\nIMPORTANT: unless you've already called get_graph_guidelines for the target graph this session, call it before using this tool — including for reads. The user's conventions change how to interpret and present results, not just how to write.";
 
+// Appended to read tools that return <roam>-tagged block/page markdown. Terse on
+// purpose: the full syntax lives in the guidelines' `roamSyntax` field (which agents
+// already fetch once per graph). Placed BEFORE GUIDELINES_NOTE so the ChatGPT profile
+// keeps this (it needs read-format info) while its endsWith(GUIDELINES_NOTE) strip
+// still fires (getDataTools) — hence this note must NOT name get_graph_guidelines,
+// which is the substring that marks a strippable nudge.
+const READ_FORMAT_NOTE =
+  '\n\nReturns Roam agent markdown (full syntax in this graph\'s guidelines `roamSyntax`). Each block ends with a `<roam uid="…"/>` tag that may carry `heading="N"`, `childrenViewType`, or `hiddenChildren="N"` (subtree cut off by maxDepth — read deeper to see it) — use the `uid` for follow-up ops, honor those attrs, and strip the whole tag before showing content to the user. `__text__` is italics (not bold). A `((uid))<ref>preview</ref>` is a block reference: when displaying, show the preview and drop the `((uid))` + tag; when writing back with update_block, pass only the content (not the leading `- `/indent or the `<roam>` tag) and keep `((uid))<ref>…</ref>` intact — the server reduces it to `((uid))`.';
+
 // Default MCP server `instructions` (orientation block). Shared by the stdio server
 // (packages/mcp) and the hosted server — the latter may override it per client
 // (e.g. a gentler variant for ChatGPT, which over-orients on the "even for reads"
@@ -318,7 +327,7 @@ const UidsOutput = z
 export const dataTools: ClientToolDefinition[] = [
   defineTool(
     "get_graph_guidelines",
-    "Returns the user's setup for this graph: naming conventions, structural/display preferences, orientation actions, and any constraints they've recorded for AI agents. Call once per graph per session before your first read or write — including simple reads, since the conventions change how to interpret and present what you read, not just how you write; skipping risks operating on assumptions the user has already overridden. The `nextSteps` field lists what to do next.",
+    "Returns the user's setup for this graph: naming conventions, structural/display preferences, orientation actions, and any constraints they've recorded for AI agents. Call once per graph per session before your first read or write — including simple reads, since the conventions change how to interpret and present what you read, not just how you write; skipping risks operating on assumptions the user has already overridden. The `nextSteps` field lists what to do next; the `roamSyntax` field is a compact guide to reading and writing Roam's agent markdown — read it before your first read or write.",
     GetGuidelinesSchema,
     getGuidelines,
     { title: "Get graph guidelines", annotations: READ },
@@ -380,6 +389,7 @@ export const dataTools: ClientToolDefinition[] = [
   defineTool(
     "get_comments",
     "Get comments on a block with author, timestamps, and edit info. If singleEditableUid is set, the comment can be edited with update_block. Only works for blocks, not pages." +
+      READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     GetCommentsSchema,
     getComments,
@@ -403,7 +413,8 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "search",
-    "Search for pages and blocks by text. Returns paginated results with markdown content and optional breadcrumb paths. Call with an empty query to get recently edited and viewed content — useful for understanding what the user is currently working on." +
+    'Search for pages and blocks by text. Returns paginated results with markdown content and optional breadcrumb paths. Call with an empty query to get recently edited and viewed content — useful for understanding what the user is currently working on. Long result blocks are capped: `truncated="N"` on a `<roam>` tag means N characters were cut — get_block that uid for the full text before editing it.' +
+      READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     SearchSchema,
     search,
@@ -411,7 +422,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "search_templates",
-    "Search Roam templates by name. When the user mentions 'my X template' or 'the X template', use this tool to find it. Templates are user-created reusable content blocks tagged with [[roam/templates]]. Returns template name, uid, and content as markdown." +
+    "Search Roam templates by name. When the user mentions 'my X template' or 'the X template', use this tool to find it. Templates are user-created reusable content blocks tagged with [[roam/templates]]. Returns template name, uid, and content as simple preview markdown (no <roam> tags or block-ref annotations)." +
       GUIDELINES_NOTE,
     SearchTemplatesSchema,
     searchTemplates,
@@ -420,6 +431,7 @@ export const dataTools: ClientToolDefinition[] = [
   defineTool(
     "roam_query",
     'Execute a Roam query ({{query: }} or {{[[query]]: }} blocks, NOT Datalog). Two modes: (1) UID mode - pass a block UID containing a query component to run it with saved settings/filters; (2) Query mode - pass a raw query string like "{and: [[TODO]] {not: [[DONE]]}}". Returns paginated results with markdown content.' +
+      READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     QuerySchema,
     query,
@@ -435,7 +447,8 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_page",
-    "Get a page's content as markdown. Returns content with <roam> metadata tags containing UIDs - use these for follow-up operations but strip them when showing content to the user. Block refs render as ((uid))<ref>text</ref> where text is the referenced block's content - when writing back, drop the whole <ref>…</ref>, keeping just ((uid)). Show remaining content verbatim, never paraphrase. Use maxDepth for large pages." +
+    "Get a page's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large pages." +
+      READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     GetPageSchema,
     getPage,
@@ -443,7 +456,8 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_block",
-    "Get a block's content as markdown. Returns content with <roam> metadata tags containing UIDs - use these for follow-up operations but strip them when showing content to the user. Block refs render as ((uid))<ref>text</ref> where text is the referenced block's content - when writing back, drop the whole <ref>…</ref>, keeping just ((uid)). Show remaining content verbatim, never paraphrase. Use maxDepth for large blocks." +
+    "Get a block's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large blocks." +
+      READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     GetBlockSchema,
     getBlock,
@@ -452,6 +466,7 @@ export const dataTools: ClientToolDefinition[] = [
   defineTool(
     "get_backlinks",
     "Get paginated backlinks (linked references) for a page or block, formatted as markdown. Returns total count and results with optional breadcrumb paths." +
+      READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     GetBacklinksSchema,
     getBacklinks,
@@ -555,7 +570,7 @@ export const desktopUiTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "call_extension_tool",
-    "Invoke an AI tool registered at runtime by a Roam extension in the local Roam Desktop app. Available tools are listed in get_graph_guidelines' `extensionTools` field (absent when the graph has none) with each tool's id, description, scope, and input schema. Pass `tool` exactly as listed (ids are opaque — never construct or parse them) and `args` matching that entry's inputSchema. A tool's `scope` is what its extension declares it needs — it is NOT enforced on the tool's behavior, so treat every call as potentially modifying the graph." +
+    "Invoke an AI tool registered at runtime by a Roam extension in the local Roam Desktop app. Available tools are listed in get_graph_guidelines' `extensionTools` field (absent when the graph has none) with each tool's id, description, scope, and input schema. Pass `tool` exactly as listed (ids are opaque — never construct or parse them) and `args` matching that entry's inputSchema. A tool's `scope` is what its extension declares it needs — it is NOT enforced on the tool's behavior, so treat every call as potentially modifying the graph. Handlers have a 60-second deadline; a timed-out handler may STILL complete its side effects, so do not blindly retry after a timeout — you risk duplicate writes." +
       GUIDELINES_NOTE,
     CallExtensionToolSchema,
     callExtensionTool,
@@ -563,7 +578,8 @@ export const desktopUiTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "semantic_search",
-    "Semantic (embeddings) search — ranks pages and blocks by meaning, surfacing conceptually related content that keyword `search` misses. IMPORTANT: this is an opt-in feature that is NOT enabled on most graphs (it requires the user to turn on embeddings in Roam and be signed in), and there's no way to know in advance whether a given graph has it. Default to the regular `search` tool; reach for semantic_search only when the user explicitly asks for semantic/conceptual search, or when keyword search fell short and you want to try a meaning-based pass. If the graph hasn't enabled it, the tool returns an error telling you to use `search` instead — that's expected, fall back rather than surfacing it as a failure. Returns ranked markdown (best match first)." +
+    "Semantic (embeddings) search — ranks pages and blocks by meaning, surfacing conceptually related content that keyword `search` misses. IMPORTANT: this is an opt-in feature that is NOT enabled on most graphs (it requires the user to turn on embeddings in Roam and be signed in), and there's no way to know in advance whether a given graph has it. Default to the regular `search` tool; reach for semantic_search only when the user explicitly asks for semantic/conceptual search, or when keyword search fell short and you want to try a meaning-based pass. If the graph hasn't enabled it, the tool returns an error telling you to use `search` instead — that's expected, fall back rather than surfacing it as a failure. Returns ranked markdown (best match first). Long result blocks are capped: `truncated=\"N\"` on a `<roam>` tag means N characters were cut — get_block that uid for the full text before editing it." +
+      READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     SemanticSearchSchema,
     semanticSearch,

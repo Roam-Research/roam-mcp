@@ -9,8 +9,12 @@ import { textResult } from "../types.js";
 
 export const SuggestLinksSchema = z.object({
   text: z.string().describe("The passage of text to find linkable existing pages in."),
+  // .int().positive() enforces the public contract (a count of suggestions);
+  // coercion kept because the CLI passes flag values as strings.
   maxResults: z.coerce
     .number()
+    .int()
+    .positive()
     .optional()
     .describe("Maximum number of suggestions to return (default 20)."),
 });

@@ -142,7 +142,7 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 
 ## Hiding content from the AI
 
-Blocks tagged `#.rm-hide` or `#.rm-private` — and everything nested under them — are omitted from the content these commands return. The read commands that surface graph content to the AI (`get-page`, `get-block`, `get-backlinks`, `search`, `semantic-search`, `search-templates`, `roam-query`) all skip hidden subtrees. Both the hashtag (`#.rm-hide`) and link (`[[.rm-hide]]`) forms work; `.rm-private` is Roam's existing "hidden from other users" tag, while `.rm-hide` hides from the AI specifically.
+Blocks tagged `#.rm-hide` or `#.rm-private` — and everything nested under them — are omitted from the content these commands return. The read commands that surface graph content to the AI (`get-page`, `get-block`, `get-backlinks`, `search`, `semantic-search`, `roam-query`) all skip hidden subtrees. (`search-templates` is the exception: template previews are NOT filtered, so hidden blocks inside a shared template can appear in its results.) Both the hashtag (`#.rm-hide`) and link (`[[.rm-hide]]`) forms work; `.rm-private` is Roam's existing "hidden from other users" tag, while `.rm-hide` hides from the AI specifically.
 
 **This is a convenience filter, not a security guarantee.** The filtering is applied only to the AI content commands above. The raw `datalog-query` command reads the database directly and does **not** apply it, so a capable agent could still surface hidden blocks through datalog. Don't rely on these tags for anything truly sensitive — treat them as "keep it out of the AI's way," not "keep it secret."
 
@@ -167,4 +167,4 @@ npx @roam-research/roam-cli search --query "my notes"
 
 ## Documentation
 
-See the [main repository](https://github.com/Roam-Research/roam-tools) for development setup, contributing guidelines, and architecture details.
+See the [main repository](https://github.com/Roam-Research/roam-tools) for development setup, contributing guidelines, and architecture details. The repo also ships a [`roam-syntax` Agent Skill](https://github.com/Roam-Research/roam-tools/tree/master/skills/roam-syntax) that teaches agents Roam-flavored markdown and safe read/write patterns — copy it into your agent's skills directory (e.g. `.claude/skills/`) for platforms that support skills.

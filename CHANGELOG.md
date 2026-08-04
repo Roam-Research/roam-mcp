@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.10.0 - 2026-08-02
+
+- **`get_graph_guidelines` now returns a `roamSyntax` field** — a compact, graph-agnostic guide
+  to Roam's agent markdown (the post-wire-format-change syntax): Roam-vs-standard-markdown gotchas
+  (italics are `__text__`; `{{[[TODO]]}}` at block start; H1–H3 only; numbered lists via
+  `childrenViewType`, not `1.` markers), how to read the `<roam .../>`-tagged output
+  (`heading`/`childrenViewType`/`refs`/`hiddenChildren`/`truncated` attrs, `((uid))<ref>preview</ref>`
+  block references), and how to write back without corrupting content (pass only the block content
+  to `update_block`; keep `((uid))<ref>…</ref>` intact — the server reduces it to `((uid))`;
+  re-read `truncated="N"` search results via `get_block` before editing). Damage-ranked
+  structure: the write-back procedure leads as explicit steps with one worked example, and a
+  short checksum repeats it at the end. Canonical source: `packages/core/src/roam-syntax.ts`
+  (exported as `ROAM_SYNTAX`). The graph's own `[[roam/agent guidelines]]` govern style and
+  conventions; the data-integrity rules apply regardless. Also exported:
+  **`ROAM_SYNTAX_APPEND_ONLY`** — the subset for append-only connections (encrypted graphs:
+  `get_graph_guidelines` + `append_to_daily_note` only), composed from the same section constants
+  so it can't drift, with everything referencing tools an append-only agent lacks removed. For the
+  hosted encrypted-guidelines path to import.
+- **Read-tool descriptions teach the wire format**: a shared format note on the 7 read tools that
+  emit `<roam>`-tagged markdown (`get_page`, `get_block`, `get_backlinks`, `search`,
+  `get_comments`, `roam_query`, `semantic_search`), plus a `truncated="N"` partial-overwrite
+  warning on `search`/`semantic_search` specifically. (`search_templates` emits plain previews —
+  no note.)
+- **New `skills/roam-syntax/` Agent Skill** (not part of the npm packages — copy it into your
+  agent's skills directory): SKILL.md with the high-signal gotchas, reading/write-back rules, and
+  behavioral doctrine, plus references for full syntax, `{{...}}` components, queries, and the
+  MCP read→edit→write model. A consistency test (`packages/core/test/roam-syntax.test.ts`) pins
+  the load-bearing invariants shared by the blob and the skill.
+- **Schema tightening**: `add_shortcut.index` and `suggest_links.maxResults` now require
+  non-negative / positive integers (the descriptions always promised counts/positions).
+- **README fix**: `search_templates` was wrongly listed among the tools that skip
+  `#.rm-hide`/`#.rm-private` subtrees — it is exempt (template previews are not filtered), now
+  stated as an explicit privacy warning in all three READMEs.
+- Minor-version bump on purpose: additive feature (new export + new guidelines field), so `^0.9.x`
+  consumers don't auto-inherit the new-format guidance — the hosted MCP opts in via an explicit
+  pin bump once its backend emits the new wire format.
+
 ## 0.9.2 - 2026-07-29
 
 - **New local-only tool: `call_extension_tool`** (`data.ai.callExtensionTool`) — invokes AI

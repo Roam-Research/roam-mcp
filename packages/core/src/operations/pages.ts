@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { CallToolResult, GetPageResponse, RoamActionClient } from "../types.js";
 import { textResult } from "../types.js";
+import { ROAM_SYNTAX } from "../roam-syntax.js";
 
 // Schemas
 export const CreatePageSchema = z.object({
@@ -160,5 +161,14 @@ export async function getGuidelines(client: RoamActionClient): Promise<CallToolR
   return textResult({
     ...result,
     nextSteps,
+    // Keep roamSyntax AFTER ...result: its text says the graph's own `guidelines`
+    // are "above", which is only true while `guidelines` serializes first.
+    // Graph-agnostic Roam agent-markdown guide (post-#2659 wire format). Present
+    // regardless of whether the user authored their own `guidelines`. Reaches the
+    // local transport and the hosted transport for NON-encrypted graphs (both
+    // dispatch this op through core). Encrypted-graph guidelines are synthesized
+    // in the hosted functions_ts (encrypted-guidelines.ts), which bypasses core —
+    // that path must include ROAM_SYNTAX separately (a relemma-side change).
+    roamSyntax: ROAM_SYNTAX,
   });
 }

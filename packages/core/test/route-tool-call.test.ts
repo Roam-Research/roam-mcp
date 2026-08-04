@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { findTool, routeToolCall } from "../src/tools.js";
+import { ROAM_SYNTAX } from "../src/roam-syntax.js";
 import { RoamError, ErrorCodes } from "../src/types.js";
 
 // Core's routeToolCall has no defaults — it requires resolveGraph + createClient
@@ -154,6 +155,9 @@ describe("routeToolCall — get_graph_guidelines with tokenInfoMode: 'skip'", ()
     const text = (result.content[0] as { text: string }).text;
     expect(JSON.parse(text).graph).toBe("test");
     expect(text).toContain("do nice things");
+    // The graph-agnostic Roam syntax guide rides every guidelines response,
+    // independent of whether the user authored their own `guidelines`.
+    expect(JSON.parse(text).roamSyntax).toBe(ROAM_SYNTAX);
   });
 });
 
