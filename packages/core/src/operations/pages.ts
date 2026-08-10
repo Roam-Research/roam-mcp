@@ -168,7 +168,8 @@ export async function getGuidelines(client: RoamActionClient): Promise<CallToolR
     // local transport and the hosted transport for NON-encrypted graphs (both
     // dispatch this op through core). Encrypted-graph guidelines are synthesized
     // in the hosted functions_ts (encrypted-guidelines.ts), which bypasses core —
-    // that path must include ROAM_SYNTAX separately (a relemma-side change).
+    // that path imports ROAM_SYNTAX_APPEND_ONLY separately (the append-only subset,
+    // exported since 0.10.0; a relemma-side change, gated on their deploy chain).
     roamSyntax: ROAM_SYNTAX,
   });
 }

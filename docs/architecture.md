@@ -151,9 +151,11 @@ The hosted MCP server lives in a separate, private repo and is **not** in this t
 - Injects its **own** `resolveGraph` (backed by its own grant store, not `~/.roam-tools.json`) and its **own** client (its own auth, not a local token).
 - Passes `tokenInfoMode: "skip"` and does **not** implement `getTokenInfo` — so the `get_graph_guidelines` side flow never fires.
 - Authors its **own** `list_graphs` / `setup_new_graph` standalone tools and registers them directly with the MCP SDK. (They can't go through `routeToolCall`, which throws on standalone tools.)
-- Pins core with a **caret range** on core's current minor (`^0.8.0` as of core `0.8.1`; it was `^0.7.0` until they widened it to consume `core@0.8.0`). Each widening is a deliberate opt-in on their side.
+- Pins core with a **caret range** on a chosen minor (`^0.7.0` → `^0.8.0` historically). Each widening is a deliberate opt-in on their side.
 
 That caret is the crux of §6: anything we ship in a **patch of the pinned minor** reaches the hosted server automatically. A new minor does not — it waits until they widen the range.
+
+> **Current gap (as of core `0.10.0`).** The hosted consumer still pins **`^0.8.0`** (resolving `0.8.0`), so it has **none** of `0.9.x`/`0.10.x` — including `ROAM_SYNTAX` / `ROAM_SYNTAX_APPEND_ONLY` and the newer tools. On 0.x a caret does **not** cross minors, which is exactly why `0.10.0` was released as a minor: the new-format syntax guidance cannot reach hosted agents by accident. The widening to `^0.10.0` is deliberately sequenced **after** the hosted backend deploys the matching wire format — until then, guidance describing that format would not match what the backend emits.
 
 ---
 
@@ -175,7 +177,7 @@ Real, intentional differences. Keep them in mind when reasoning about behavior o
 
 ## 6. How to change this repo without breaking the remote MCP
 
-**The load-bearing fact:** the hosted consumer pins core with a **caret** on core's current minor (`^0.8.0` as of core `0.8.1`). So **any patch we publish within that minor reaches it automatically, with no review on their side** — `core@0.8.1` and every later `0.8.x` land there unreviewed. A minor bump does not reach it until they widen the range. SemVer discipline on `core` is therefore a safety mechanism, not a formality.
+**The load-bearing fact:** the hosted consumer pins core with a **caret** on a chosen minor (today `^0.8.0`, while core is published at `0.10.0` — see the gap note in §4). So **any patch we publish within the pinned minor reaches it automatically, with no review on their side** — every later `0.8.x` would land there unreviewed. A minor bump does not reach it until they widen the range. SemVer discipline on `core` is therefore a safety mechanism, not a formality: the minor boundary is what let `0.10.0`'s guidance wait for the hosted deploy instead of arriving unannounced.
 
 ### What each bump level is allowed to contain
 

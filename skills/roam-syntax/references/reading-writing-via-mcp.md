@@ -30,7 +30,7 @@ write actually stored what you intended.
 
 | Attr               | Meaning                                                                                              |
 | ------------------ | ---------------------------------------------------------------------------------------------------- |
-| `uid`              | always present; use for follow-up operations (get_block, update_block, refs…)                        |
+| `uid`              | the handle for follow-up operations (get_block, update_block, refs…); should be on every block       |
 | `heading`          | 1–3, only when the block is a heading                                                                |
 | `childrenViewType` | `numbered`/`document`, only when not a plain bullet                                                  |
 | `refs`             | how many blocks reference this one; high = structurally important, edit with care                    |
@@ -39,6 +39,12 @@ write actually stored what you intended.
 
 **Strip the whole `<roam .../>` tag before showing content to a user.** Honor `heading` /
 `childrenViewType` when reconstructing structure.
+
+**If a tag has no `uid`**, that block's stored uid is invalid (rare — legacy or imported content)
+and the block **cannot be addressed**: `update_block`, `delete_block` and `move_block` all require
+a uid, and the server rejects invalid ones anyway. Leave it alone — read it, but don't invent a
+uid and don't re-create its content elsewhere to work around it. That includes a `truncated="N"`
+hit with no `uid`: there's no way to fetch the full text, so don't edit it from the visible prefix.
 
 ## 🐛 The write-back trap (don't lose block references)
 
