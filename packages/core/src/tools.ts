@@ -198,6 +198,13 @@ const READ_FORMAT_NOTE =
 // (e.g. a gentler variant for ChatGPT, which over-orients on the "even for reads"
 // language). "Always … before your first read or write" reliably triggers
 // orientation; "exactly once … don't call it again" prevents an over-orientation loop.
+//
+// Reach, before you add anything here (verified 2026-08-14): a hosted client profile
+// that sets its own `instructions` REPLACES this whole string rather than extending it
+// — ChatGPT does, so nothing added here reaches it — and the hosted server appends its
+// own write-confirmation policy on every route. Anything that must reach every client
+// belongs in a TOOL DESCRIPTION instead; no profile drops those. That override is a
+// snapshot, not a link — a change worth propagating has to be made in both places.
 export const DEFAULT_MCP_INSTRUCTIONS =
   "This server exposes tools for a user's Roam Research graph(s).\n" +
   "Before you read or write anything in a graph this session, orient yourself:\n" +
@@ -325,6 +332,12 @@ const UidsOutput = z
 
 // Data Tools (require graph/client; reusable across local + hosted MCP transports)
 export const dataTools: ClientToolDefinition[] = [
+  // get_graph_guidelines' description is the ONE the hosted server also overrides per
+  // client (a gentler variant for ChatGPT — see CHANGELOG 0.7.3). That copy is a
+  // SNAPSHOT, not a link: edits here don't reach it, so propagate deliberately.
+  // Its `roamSyntax` clause is deliberately separate from the user-authored fields —
+  // roamSyntax is Roam's own rules and applies regardless of the graph's guidelines
+  // (the carve-out ROAM_SYNTAX itself opens with). Don't merge them into one claim.
   defineTool(
     "get_graph_guidelines",
     "Returns the user's setup for this graph: naming conventions, structural/display preferences, orientation actions, and any constraints they've recorded for AI agents. Call once per graph per session before your first read or write — including simple reads, since the conventions change how to interpret and present what you read, not just how you write; skipping risks operating on assumptions the user has already overridden. The `nextSteps` field lists what to do next; the `roamSyntax` field is a compact guide to reading and writing Roam's agent markdown — read it before your first read or write.",

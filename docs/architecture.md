@@ -145,17 +145,17 @@ Any `RoamActionClient` implementation must follow two conventions, because the o
 
 The hosted MCP server lives in a separate, private repo and is **not** in this tree. From core's perspective it is just another consumer of the §2 contract. At a high level it:
 
-- Imports `dataTools`, `routeToolCall`, `RoamError`, `ErrorCodes`, and the `RoamActionClient` / `ToolGraph` types from `core` (and, from `0.6.7`, `stripUndeclaredStructuredContent`). Its installed-package tests also guard `EXPECTED_API_VERSION`, `desktopUiTools`, and `defineStandaloneTool`.
+- Imports `dataTools`, `routeToolCall`, `RoamError`, `ErrorCodes`, and the `RoamActionClient` / `ToolGraph` types from `core` — plus, as they were added: `stripUndeclaredStructuredContent` (`0.6.7`), `getDataTools` (`0.7.1`), `DEFAULT_MCP_INSTRUCTIONS` (`0.7.2`), and `ROAM_SYNTAX_APPEND_ONLY` (`0.10.0`, for the encrypted-guidelines path it synthesizes itself). Its installed-package tests also guard `EXPECTED_API_VERSION`, `desktopUiTools`, and `defineStandaloneTool`, and import `ROAM_SYNTAX` to prove the ordinary payload carries it — which is why §6's checklist covers both blobs while only the append-only one is a production import.
 - Registers **`dataTools` only** (omits `desktopUiTools` — remote contexts have no local window/filesystem).
 - **Forwards each tool's `outputSchema` and applies the strip-gate** (see §2e). It passes `outputSchema: tool.outputSchema` into its `registerTool` config, and after `routeToolCall` returns it drops `structuredContent` for any tool with no `outputSchema` — via the shared `stripUndeclaredStructuredContent` helper (from `0.6.7`; a hand-rolled inline check before then) — so the "`structuredContent` iff `outputSchema`" invariant is identical to the local transport. Its own standalone tools (e.g. `list_graphs`) may declare their own `outputSchema` + emit `structuredContent` directly.
 - Injects its **own** `resolveGraph` (backed by its own grant store, not `~/.roam-tools.json`) and its **own** client (its own auth, not a local token).
 - Passes `tokenInfoMode: "skip"` and does **not** implement `getTokenInfo` — so the `get_graph_guidelines` side flow never fires.
 - Authors its **own** `list_graphs` / `setup_new_graph` standalone tools and registers them directly with the MCP SDK. (They can't go through `routeToolCall`, which throws on standalone tools.)
-- Pins core with a **caret range** on a chosen minor (`^0.7.0` → `^0.8.0` historically). Each widening is a deliberate opt-in on their side.
+- Pins core at an **exact version** (`"0.10.0"`, since 2026-08-14) — no range. It previously used a caret on a chosen minor (`^0.7.0` → `^0.8.0`); that was replaced precisely because a patch may change model-facing copy, so every upgrade must be an explicit, reviewable `package.json` diff rather than something a lockfile refresh can pull in.
 
-That caret is the crux of §6: anything we ship in a **patch of the pinned minor** reaches the hosted server automatically. A new minor does not — it waits until they widen the range.
+That pin is the crux of §6: **nothing we publish reaches the hosted server on its own** — not a patch, not a minor. Each upgrade is a deliberate edit on their side.
 
-> **Current gap (as of core `0.10.0`).** The hosted consumer still pins **`^0.8.0`** (resolving `0.8.0`), so it has **none** of `0.9.x`/`0.10.x` — including `ROAM_SYNTAX` / `ROAM_SYNTAX_APPEND_ONLY` and the newer tools. On 0.x a caret does **not** cross minors, which is exactly why `0.10.0` was released as a minor: the new-format syntax guidance cannot reach hosted agents by accident. The widening to `^0.10.0` is deliberately sequenced **after** the hosted backend deploys the matching wire format — until then, guidance describing that format would not match what the backend emits.
+> **Current state (2026-08-14).** The hosted consumer runs core **exactly `0.10.0`**, deployed and verified that day: ordinary graphs serve `ROAM_SYNTAX`, encrypted graphs serve `ROAM_SYNTAX_APPEND_ONLY` (synthesized on their side, bypassing core — see the comment on `getGuidelines` in `operations/pages.ts`). The gap this note used to describe — hosted stuck on `0.8.0` while core shipped `0.9.x`/`0.10.x` — is closed. What they now pin about us — blob fingerprints, `EXPECTED_API_VERSION`, the exact tool-name list — is in §6 under "What the hosted consumer pins about us".
 
 ---
 
@@ -177,7 +177,11 @@ Real, intentional differences. Keep them in mind when reasoning about behavior o
 
 ## 6. How to change this repo without breaking the remote MCP
 
-**The load-bearing fact:** the hosted consumer pins core with a **caret** on a chosen minor (today `^0.8.0`, while core is published at `0.10.0` — see the gap note in §4). So **any patch we publish within the pinned minor reaches it automatically, with no review on their side** — every later `0.8.x` would land there unreviewed. A minor bump does not reach it until they widen the range. SemVer discipline on `core` is therefore a safety mechanism, not a formality: the minor boundary is what let `0.10.0`'s guidance wait for the hosted deploy instead of arriving unannounced.
+**The load-bearing fact:** the hosted consumer pins core at an **exact version** (`"0.10.0"` since 2026-08-14 — see §4). So **nothing we publish reaches it automatically.** Every upgrade is an explicit `package.json` edit on their side, reviewed as a diff, and immune even to a lockfile regeneration.
+
+Two consequences. We **cannot ship hosted agents a fix or a fact by publishing alone** — reaching them always takes their deliberate bump plus a redeploy, so plan cross-repo changes as two events, not one. And SemVer discipline on `core` is no longer their guardrail: it still matters, because it signals intent to whoever reviews that diff and other consumers may use ranges, but the minor boundary is now a communication device rather than a safety mechanism.
+
+> **Correction (2026-08-14).** Earlier revisions of this section said a patch inside the pinned minor "reaches it automatically, with no review on their side." That was already wrong under the caret — `core@0.8.1` published 2026-07-09 and the hosted lockfile still resolved `0.8.0` for over a month, because a committed lockfile, not the range, decides what a deploy installs. The exact pin removes the mechanism outright. Don't reason from the old claim.
 
 ### What each bump level is allowed to contain
 
@@ -190,7 +194,7 @@ Real, intentional differences. Keep them in mind when reasoning about behavior o
 ### Don't-break checklist (a change needs a minor or major bump if it does any of these)
 
 - Adds a **required** field to `RouteToolCallOptions`, or changes `resolveGraph` / `createClient` signatures, or changes the dispatch contract (rejecting standalones, stripping `graph`, `withGraphField`).
-- Removes or renames a core barrel export: `dataTools`, `desktopUiTools`, `routeToolCall`, `defineStandaloneTool`, `RoamError`, `ErrorCodes`, `RoamActionClient`, `ToolGraph`, `EXPECTED_API_VERSION`, the result/type helpers.
+- Removes or renames a core barrel export the hosted consumer imports: `dataTools`, `desktopUiTools`, `routeToolCall`, `defineStandaloneTool`, `RoamError`, `ErrorCodes`, `RoamActionClient`, `ToolGraph`, `EXPECTED_API_VERSION`, `getDataTools`, `stripUndeclaredStructuredContent`, `DEFAULT_MCP_INSTRUCTIONS`, `ROAM_SYNTAX`, `ROAM_SYNTAX_APPEND_ONLY`, the result/type helpers. (Only the two blobs are new hosted imports, as of core `0.10.0`. The other three have been imported far longer — `stripUndeclaredStructuredContent` since `0.6.7`, `getDataTools` since `0.7.1`, `DEFAULT_MCP_INSTRUCTIONS` since `0.7.2` — and were simply missing from this list.)
 - Changes the shape of `ToolGraph`, `RoamActionClient`, `RoamResponse`, `RoamApiError`, or `RoamError`.
 - Removes or renames an `ErrorCodes` member (adding one is safe). Also: never validate a code against the enum — the hosted transport emits codes core doesn't know.
 - Adds a tool to `dataTools` that assumes local-only capabilities (filesystem / Desktop UI). It would reach the hosted agent and fail.
@@ -200,10 +204,18 @@ Real, intentional differences. Keep them in mind when reasoning about behavior o
 - Changes `EXPECTED_API_VERSION`'s major.minor — that's a real wire-compatibility change with the backend, not a cosmetic bump.
 - Introduces a caret/tilde dep range in `mcp`'s or `cli`'s `package.json` for a sibling `@roam-research/*` package — `bump-version.mjs` writes **exact** pins on purpose (see the exact sibling-pin invariant in `CLAUDE.md`).
 
+### What the hosted consumer pins about us
+
+Their side hard-codes facts about core beyond the version. These don't block a publish — the exact pin means nothing reaches them until they upgrade — but each one turns into work **inside their upgrade diff**, so flag it in `CHANGELOG.md` rather than letting it surface as a broken gate:
+
+- **SHA-256 fingerprints of both blob texts**, checked as part of their deploy verification. Any edit to `ROAM_SYNTAX` or `ROAM_SYNTAX_APPEND_ONLY` — including a whitespace-only one — invalidates them. (Both texts are currently frozen pending an eval; this is the cost of unfreezing.)
+- **`EXPECTED_API_VERSION` as a string literal** in a test fixture, behind a `yarn test` predeploy gate. The checklist above only forbids changing its major.minor in a patch; note that _any_ change to it, patch included, lands in their gate.
+- **The 18 `dataTools` names, exact and hand-written** (deliberately not derived from core, so the pin isn't tautological). Adding, removing, or renaming a data tool means editing their fixture. `packages/core/test/hosted-surface.test.ts` is the mirror of this on our side.
+
 ### Before shipping a `core` change
 
 1. `npm run typecheck && npm run lint && npm run build` and both workspace test suites.
-2. Classify the change as patch / minor / major using the rules above. If it's beyond a patch, the hosted consumer should not pick it up silently — coordinate before publishing.
+2. Classify the change as patch / minor / major using the rules above. The classification no longer gates what the hosted consumer receives (see the load-bearing fact) — it tells whoever reviews their upgrade diff how much to scrutinize, so it must still be honest.
 
 ---
 

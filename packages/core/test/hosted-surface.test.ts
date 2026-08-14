@@ -8,8 +8,15 @@ import { dataTools, desktopUiTools } from "../src/tools.js";
 // most for tools that must never reach the hosted transport, e.g.
 // call_extension_tool (runs arbitrary extension handler code; the hosted
 // backend serves from a peer replica with no channel to a live client).
+// Since 2026-08-14 the hosted server (on core 0.10.0) mirrors this list as its
+// own hand-written fixture — deliberately not derived from core, so neither pin
+// is tautological — asserted both consumer-side and against a real tools/list on
+// every route. It pins core exactly, so a change here never reaches them on its
+// own: a deliberate surface change becomes a required edit in their upgrade diff,
+// and an accidental one shows up there as a failure when they next bump.
 // If this test fails because you intentionally changed the surface, update the
-// list here AND check docs/architecture.md §2 + the hosted consumer's tests.
+// list here AND check docs/architecture.md §2 + the hosted consumer's fixture
+// (their upgrade diff is where that edit has to happen — see §6).
 const HOSTED_SURFACE = [
   "add_comment",
   "append_to_daily_note",

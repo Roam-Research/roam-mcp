@@ -169,7 +169,8 @@ export async function getGuidelines(client: RoamActionClient): Promise<CallToolR
     // dispatch this op through core). Encrypted-graph guidelines are synthesized
     // in the hosted functions_ts (encrypted-guidelines.ts), which bypasses core —
     // that path imports ROAM_SYNTAX_APPEND_ONLY separately (the append-only subset,
-    // exported since 0.10.0; a relemma-side change, gated on their deploy chain).
+    // exported since 0.10.0). Both paths are live in hosted production since
+    // 2026-08-14; their deploy verifies each blob against a pinned SHA-256.
     roamSyntax: ROAM_SYNTAX,
   });
 }
