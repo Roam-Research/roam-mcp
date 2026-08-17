@@ -34,7 +34,7 @@ Dependency chain: **`core → local → {mcp, cli}`** (enforced by TypeScript pr
 
 This is the seam external consumers depend on. Treat every symbol the hosted consumer imports as a **published contract** — changing it can break a consumer you can't see. Defined in `packages/core/src/{types,tools,index}.ts`; re-exported from `packages/core/src/index.ts`.
 
-The sections below name the load-bearing exports; **`packages/core/src/index.ts` is the authoritative full list** (it also exports the `CallToolResult` builders `textResult` / `imageResult` / `errorResult`, `getErrorMessage`, and `GraphConfigSchema` / `RoamMcpConfigSchema`). The hosted consumer's installed-package smoke tests also import `EXPECTED_API_VERSION`, `desktopUiTools`, and `defineStandaloneTool`, even though runtime registration uses `dataTools` only. Per §6, removing or renaming **any** barrel export is a breaking change.
+The sections below name the load-bearing exports; **`packages/core/src/index.ts` is the authoritative full list** (it also exports the `CallToolResult` builders `textResult` / `successResult` / `imageResult` / `errorResult`, `getErrorMessage`, and `GraphConfigSchema` / `RoamMcpConfigSchema`). The hosted consumer's installed-package smoke tests also import `EXPECTED_API_VERSION`, `desktopUiTools`, and `defineStandaloneTool`, even though runtime registration uses `dataTools` only. Per §6, removing or renaming **any** barrel export is a breaking change.
 
 ### 2a. The dispatcher
 
@@ -85,7 +85,7 @@ class RoamError extends Error {
 
 ### 2c. `ErrorCodes` — a recommended vocabulary, not a hard contract
 
-`ErrorCodes` (26 members today) exists for IDE autocomplete and cross-package consistency. Since the `RoamError.code` type is `ErrorCode | (string & {})`, **any string is a valid code at runtime** — a transport may emit codes core has never heard of. Two consequences:
+`ErrorCodes` (27 members today) exists for IDE autocomplete and cross-package consistency. Since the `RoamError.code` type is `ErrorCode | (string & {})`, **any string is a valid code at runtime** — a transport may emit codes core has never heard of. Two consequences:
 
 - Core must **never validate** an incoming code against the `ErrorCodes` enum.
 - **Adding** a member is additive/safe; **removing or renaming** one is a breaking change (TS consumers narrow on the literals — e.g. `mcp` on `CONFIG_TOO_NEW`, `cli` on `GRAPH_NOT_SELECTED`).
@@ -108,6 +108,21 @@ A tool definition may also carry an optional `outputSchema` (declared on the 9 w
 - `EXPECTED_API_VERSION` (`"1.1.5"`) — sent on every backend call; the backend compares **major.minor** exactly (patch ignored). Consumers read it from core, never hardcode.
 - `CONFIG_VERSION` (`1`).
 - **Output schemas & `structuredContent` (write-only).** Tool definitions carry an optional `outputSchema` (a Zod object), declared on the **9 write tools only** — the 9 reads are content-only. `textResult(value)` attaches `value` as `structuredContent` for any plain object; `stripUndeclaredStructuredContent(result, tool)` drops it again when the tool has **no** `outputSchema`. The wire invariant is therefore **`structuredContent` is present iff the tool declares an `outputSchema`** — and **every transport must apply the strip-gate** (the SDK validates `structuredContent` against the schema on success and throws if a schema-bearing tool returns none). Schemas are `.passthrough()` + all-optional; keep changes to a _declared_ write field **additive** (clients such as ChatGPT validate live responses against a ~1-day-stale cached `tools/list` schema, so a non-additive change can break a tool for ~a day — use a new tool name or expand-contract). Reads are deliberately schema-less: a schema would double the payload (`textResult` already serializes the whole result into the text channel) and read shapes still evolve.
+- **Write results are passthrough since 0.11.** The nine synthesized-success write/UI
+  tools — `update_block`, `delete_block`, `move_block`, `update_page`, `delete_page`,
+  `add_shortcut`, `remove_shortcut`, `open_main_window`, `open_sidebar` (ten call sites;
+  `open_main_window` has two) — now pass the Roam server's `result` through, merged under
+  `success: true` (`successResult`; null/non-object → the old synthesized shape). NB this
+  nine is NOT the nine schema-bearing write tools above (only five overlap): the four
+  desktop-UI members are schema-less, so their passthrough reaches the text channel only —
+  `stripUndeclaredStructuredContent` drops their `structuredContent`. Two consequences:
+  whatever a Roam write handler returns in `result` is **agent-facing API** from the
+  server's perspective, and core interprets exactly one reported field itself — the
+  deletes' `deleted`, whose explicit `false` renders as a `NOT_FOUND` error — with the copy
+  gated on the report's `reason` discriminator (`"not-found"`/absent → the confident
+  "already gone, don't retry" wording; any other value → a message quoting it that does not
+  claim the target is gone). An absent `deleted` means an older Roam and keeps pre-0.11
+  behavior.
 - `withGraphField` carries the resolved graph identity as a structured `graph` field — injected into `structuredContent` (write tools) and into the result's JSON text body when it parses as an object (content-only reads) — instead of a `"Roam graph: …"` text prefix. **Since 0.8.0** the value is the identifier the caller passed in the `graph` arg (echoed; nickname or name), falling back to the canonical graph name when no `graph` arg was passed; it still overwrites any `graph` key the backend returned, so a backend cannot spoof it. (Before 0.8.0 it was always the canonical name.) `GUIDELINES_NOTE` is appended to client-tool descriptions to nudge `get_graph_guidelines`.
 
 ### 2f. Client conventions & the error envelope
@@ -230,6 +245,8 @@ Their side hard-codes facts about core beyond the version. These don't block a p
 1. **Internal infra references in committed core (resolved).** Core's source comments and the published package READMEs previously named the hosted backend's internal infrastructure; these have been neutralized to transport-agnostic descriptions so the open-source repo stays clean.
 2. **No automated guard on the contract.** Nothing today stops a patch from breaking the caret-pinned hosted consumer. Worth adding a public-surface snapshot test (e.g. a checked-in `index.d.ts` snapshot, or an api-extractor report) that fails CI on an unintended surface change?
 3. **Documented SemVer policy.** Should `core`'s README / `package.json` state the patch/minor/major policy from §6 explicitly, so _all_ consumers (not just the hosted one) know what a caret range buys them?
-4. **Caret vs exact on the hosted side.** The hosted consumer pins a caret range, so patches land unreviewed. Keep the caret and rely on strict patch discipline, or ask the hosted side to pin exact and adopt deliberately?
+4. ~~**Caret vs exact on the hosted side.**~~ **Answered 2026-08-14:** the hosted consumer
+   moved to an exact pin (see §4/§6) — every upgrade is a deliberate, reviewable diff on
+   their side. Kept for the record; the question no longer applies.
 5. **Terminology.** Is "the hosted MCP / hosted transport (a separate, private repo)" the right abstract label to use throughout, or do you have a preferred non-sensitive name?
 6. **`EXPECTED_API_VERSION` coupling.** Anything this doc should say about whether/where the hosted path enforces the version field — without reaching into backend specifics?

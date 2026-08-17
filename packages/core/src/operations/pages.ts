@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { CallToolResult, GetPageResponse, RoamActionClient } from "../types.js";
-import { textResult } from "../types.js";
+import { textResult, successResult, notDeletedError } from "../types.js";
 import { ROAM_SYNTAX } from "../roam-syntax.js";
 
 // Schemas
@@ -89,8 +89,16 @@ export async function deletePage(
   client: RoamActionClient,
   params: DeletePageParams,
 ): Promise<CallToolResult> {
-  await client.call("data.page.delete", [{ page: { uid: params.uid } }]);
-  return textResult({ success: true });
+  const response = await client.call<{ deleted?: boolean; reason?: unknown } | null>(
+    "data.page.delete",
+    [{ page: { uid: params.uid } }],
+  );
+  // Strictly `=== false`: current Roam servers report {deleted: false} when the target
+  // didn't exist; an ABSENT field means an older Roam that doesn't report — status quo.
+  if (response.result?.deleted === false) {
+    throw notDeletedError("page", params.uid, response.result.reason);
+  }
+  return successResult(response.result);
 }
 
 export async function updatePage(
@@ -104,8 +112,8 @@ export async function updatePage(
   const apiParams: Record<string, unknown> = { page };
   if (params.mergePages !== undefined) apiParams["merge-pages"] = params.mergePages;
 
-  await client.call("data.page.update", [apiParams]);
-  return textResult({ success: true });
+  const response = await client.call("data.page.update", [apiParams]);
+  return successResult(response.result);
 }
 
 // Shape of the `data.ai.getGraphGuidelines` result. Fields marked optional may

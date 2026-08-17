@@ -59,6 +59,13 @@ describe("representative write structuredContent validates against each schema",
     ["move_block", { success: true }],
     ["update_page", { success: true }],
     ["delete_page", { success: true }],
+    // 0.11 delete report passthrough — DeleteOutput declares `deleted` UNTYPED
+    // (z.unknown()): the field is server-owned, so no server value may fail transport
+    // validation after a committed delete (core's own check is a strict === false)
+    ["delete_block", { success: true, deleted: true }],
+    ["delete_page", { success: true, deleted: true }],
+    ["delete_block", { success: true, deleted: null }],
+    ["delete_page", { success: true, deleted: "tolerated-by-design" }],
     // graph field injected by withGraphField is declared + accepted
     ["create_block", { uids: ["x"], graph: "my-graph" }],
   ];
@@ -76,6 +83,24 @@ describe("schemas are open (passthrough keeps + advertises extra keys)", () => {
     const parsed = findTool("create_block")!.outputSchema!.safeParse({ uids: ["a"], extra: 1 });
     expect(parsed.success).toBe(true);
     if (parsed.success) expect(parsed.data).toMatchObject({ uids: ["a"], extra: 1 });
+  });
+
+  it("the deletes DECLARE `deleted` (advertised in tools/list), other writes don't", () => {
+    // the only thing DeleteOutput adds over the passthrough-open SuccessOutput is that
+    // `deleted` appears in the emitted JSON Schema — passthrough means every payload
+    // validates either way, so without this the schema swap would be invisible
+    for (const name of ["delete_block", "delete_page"]) {
+      expect(Object.keys(findTool(name)!.outputSchema!.shape), name).toContain("deleted");
+    }
+    expect(Object.keys(findTool("update_block")!.outputSchema!.shape)).not.toContain("deleted");
+  });
+
+  it("delete_block (SuccessOutput.extend) keeps passthrough", () => {
+    // a zod bump changing .extend() semantics would silently STRIP unknown keys from
+    // structuredContent while the text channel kept them — this pins the claim
+    const parsed = findTool("delete_block")!.outputSchema!.safeParse({ deleted: true, extra: 1 });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data).toMatchObject({ deleted: true, extra: 1 });
   });
 });
 

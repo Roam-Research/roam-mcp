@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+- **`delete_block` / `delete_page` can now report failure**: Roam servers (from the
+  corresponding Roam release) return a `{deleted: boolean}` report for deletes — an
+  explicit `deleted: false` renders as an error with new code **`NOT_FOUND`** — meaning
+  _the delete did not happen_ (on every current server, because nothing existed to delete).
+  It is a tool-level error result (`isError`, code in the JSON error payload, target uid in
+  the error context); the message distinguishes the benign causes — an ancestor deleted
+  earlier, a retry after a timeout — from a stale/mistyped/wrong-graph uid, and says NOT to
+  retry. `deleted: true` surfaces as `{success: true, deleted: true}`
+  (declared UNTYPED via `DeleteOutput` — `SuccessOutput.extend` with `deleted: z.unknown()`,
+  passthrough preserved — so no future server value can fail transport validation after a
+  committed delete). The tool descriptions are unchanged — the error is self-describing;
+  the READMEs and the opt-in `roam-syntax` skill reference carry the note instead.
+  **Version tolerance / cross-repo invariant:** an ABSENT `deleted` field means an older
+  Roam that doesn't report, which keeps the previous behavior exactly (checked strictly
+  with `=== false`). The report also carries a `reason` discriminator: `"not-found"` — or
+  an older server sending none — is the only cause today, and **only it** licenses the
+  "already gone, don't retry" copy. Any other `reason` is a newer server semantic this
+  version doesn't know, and renders a message that quotes it and explicitly does not claim
+  the target is gone. A future cause MUST use a new `reason` rather than inherit
+  `"not-found"`. A failed deletion commit on current servers arrives as an ordinary
+  error response (never a success envelope), so no report is involved.
+- CLI: `roam delete-block` / `roam delete-page` on a nonexistent uid now print the error
+  JSON and **exit 1** (previously exit 0 with success output).
+- Internal contract change, **no observable difference today outside the deletes**: the write/UI
+  tools that used to hardcode `{success: true}` now pass the Roam server's `result` through,
+  merged under `success: true` (new exported helper `successResult`, from `core` and `local`).
+  Every action other than the deletes returns nothing today on all Roam versions, so those
+  results are identical to before; the point of the change is that a future server-reported
+  field reaches agents without a core release. The nine sites and the server-side consequence
+  (those payloads are agent-facing API from here on) are in `docs/architecture.md` §2e.
 - Docs: `docs/architecture.md` §4/§6 rewritten for the hosted consumer's move from a caret range
   to an **exact** core pin (2026-08-14) — nothing we publish reaches hosted without a deliberate
   upgrade on their side. Records what they now pin about us (blob SHA-256 fingerprints,

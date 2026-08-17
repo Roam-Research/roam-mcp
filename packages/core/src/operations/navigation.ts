@@ -7,7 +7,7 @@ import type {
   CallToolResult,
   RoamActionClient,
 } from "../types.js";
-import { textResult } from "../types.js";
+import { textResult, successResult } from "../types.js";
 
 // Schemas
 export const GetOpenWindowsSchema = z.object({});
@@ -59,10 +59,16 @@ export async function openMainWindow(
 ): Promise<CallToolResult> {
   if (params.uid) {
     // Could be a page or block - openBlock handles both
-    await client.call("ui.mainWindow.openBlock", [{ block: { uid: params.uid } }]);
-  } else if (params.title) {
-    await client.call("ui.mainWindow.openPage", [{ page: { title: params.title } }]);
+    const response = await client.call("ui.mainWindow.openBlock", [{ block: { uid: params.uid } }]);
+    return successResult(response.result);
   }
+  if (params.title) {
+    const response = await client.call("ui.mainWindow.openPage", [
+      { page: { title: params.title } },
+    ]);
+    return successResult(response.result);
+  }
+  // no-call path: nothing to pass through
   return textResult({ success: true });
 }
 
@@ -70,7 +76,7 @@ export async function openSidebar(
   client: RoamActionClient,
   params: OpenSidebarParams,
 ): Promise<CallToolResult> {
-  await client.call("ui.rightSidebar.addWindow", [
+  const response = await client.call("ui.rightSidebar.addWindow", [
     {
       window: {
         type: params.type || "outline",
@@ -78,5 +84,5 @@ export async function openSidebar(
       },
     },
   ]);
-  return textResult({ success: true });
+  return successResult(response.result);
 }

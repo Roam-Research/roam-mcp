@@ -307,8 +307,11 @@ const EXTENSION: ToolAnnotations = {
 //   - structuredContent duplicates the whole result into the text channel
 //     (textResult already JSON-stringifies it), so a schema on big reads
 //     (get_page/search) just doubles the payload for no gain.
-//   - read output shapes still evolve; write shapes ({success}/{uids}/{uid}) are
-//     small and finalized.
+//   - read output shapes still evolve; write shapes stay small, but since 0.11 they
+//     PASS THROUGH what the Roam server returns (merged under success: true) rather
+//     than being synthesized — server-added fields become agent-visible without a
+//     core change. Declare in a schema only the fields core itself interprets;
+//     passthrough-only fields need no declaration.
 // CACHE HAZARD (drives the additive-only rule): ChatGPT caches the tools/list
 // descriptor ~1 day and validates live responses against that STALE cached
 // outputSchema. With .passthrough() + all-optional, additive changes survive a
@@ -323,6 +326,12 @@ const EXTENSION: ToolAnnotations = {
 const SuccessOutput = z
   .object({ success: z.boolean().optional(), graph: z.string().optional() })
   .passthrough();
+// Deletes additionally declare `deleted` for discoverability; core interprets it with a
+// strict `=== false`, so the schema deliberately does NOT type it (z.unknown()): the
+// field is server-owned, and a future server widening it (e.g. to a count) must not turn
+// a COMMITTED delete into a transport validation error — nor force the non-additive
+// retype the cache-hazard note above forbids. .extend() preserves .passthrough().
+const DeleteOutput = SuccessOutput.extend({ deleted: z.unknown() });
 const UidOutput = z
   .object({ uid: z.string().optional(), graph: z.string().optional() })
   .passthrough();
@@ -382,7 +391,7 @@ export const dataTools: ClientToolDefinition[] = [
       GUIDELINES_NOTE,
     DeleteBlockSchema,
     deleteBlock,
-    { title: "Delete block", annotations: DELETE, outputSchema: SuccessOutput },
+    { title: "Delete block", annotations: DELETE, outputSchema: DeleteOutput },
   ),
   defineTool(
     "move_block",
@@ -414,7 +423,7 @@ export const dataTools: ClientToolDefinition[] = [
       GUIDELINES_NOTE,
     DeletePageSchema,
     deletePage,
-    { title: "Delete page", annotations: DELETE, outputSchema: SuccessOutput },
+    { title: "Delete page", annotations: DELETE, outputSchema: DeleteOutput },
   ),
   defineTool(
     "update_page",

@@ -23,6 +23,52 @@ export function textResult(value: unknown): CallToolResult {
   return result;
 }
 
+// Success result for write/UI operations: pass the server's result through, merged under
+// success: true (spread order is deliberate — core's success wins over anything the server
+// sends). Older Roam versions return null for these actions, and any non-object payload is
+// treated the same — fail-safe fallback to plain {success: true}, exactly the pre-0.11
+// synthesized shape.
+export function successResult(result: unknown): CallToolResult {
+  const mergeable = result !== null && typeof result === "object" && !Array.isArray(result);
+  return textResult(
+    mergeable ? { ...(result as Record<string, unknown>), success: true } : { success: true },
+  );
+}
+
+// Agent-facing copy for a delete the server reported it did NOT perform. Shared by
+// deleteBlock/deletePage so the two can't drift. Deliberately NOT in the package barrels:
+// it is domain copy for two operations, not a general-purpose builder, and a barrel export
+// would be a one-way door (§6 — removing one is a breaking change). `reason` is the server's discriminator:
+// "not-found" — or an older server that sends none — is the only cause today, and ONLY it
+// licenses the confident "already gone, don't retry" reading. Any other value is a newer
+// server semantic this version doesn't know, so the copy must not claim the target is gone.
+// (A future named reason probably deserves its own ErrorCode; NOT_FOUND plus honest prose
+// is the minimal safe rendering until one exists.)
+export function notDeletedError(kind: "block" | "page", uid: string, reason: unknown): RoamError {
+  const reReadTool = kind === "block" ? "get_block" : "get_page";
+  // absent/null (no reason given) reads the same as the one cause that exists today
+  const known = reason === undefined || reason === null || reason === "not-found";
+  // `reason` is server-controlled text and this message is prose an agent is told to act on
+  // — bound and flatten it. On the local transport the "server" is window.roamAlphaAPI, a
+  // writable global, so an extension could otherwise inject unbounded text here.
+  const bounded = typeof reason === "string" ? reason.replace(/\s+/g, " ").slice(0, 80) : undefined;
+  const shown =
+    bounded !== undefined ? JSON.stringify(bounded) : `a non-string value (${typeof reason})`;
+  return new RoamError(
+    known
+      ? `Nothing was deleted: no ${kind} with uid "${uid}" exists in this graph. If you ` +
+          `deleted an ancestor earlier, or are retrying a delete that timed out, it is ` +
+          `already gone — do not retry. Otherwise the uid may be stale, mistyped, or from ` +
+          `a different graph: re-locate the target via search before acting further. Other ` +
+          `uids in a sweep are unaffected.`
+      : `Nothing was deleted: the server gave reason ${shown} for the ${kind} with uid ` +
+          `"${uid}". Do NOT assume it is gone — re-read with ${reReadTool} to see the ` +
+          `current state before acting further.`,
+    ErrorCodes.NOT_FOUND,
+    bounded !== undefined ? { uid, reason: bounded } : { uid },
+  );
+}
+
 // Helper to create an image result
 export function imageResult(data: string, mimeType: string): CallToolResult {
   return { content: [{ type: "image", data, mimeType }] };
@@ -109,6 +155,12 @@ export const ErrorCodes = {
   // 400 errors
   VERSION_MISMATCH: "VERSION_MISMATCH",
   VALIDATION_ERROR: "VALIDATION_ERROR",
+  // Core-rendered from the server's delete report: THE DELETE DID NOT HAPPEN — on every
+  // current server because nothing existed to delete, but the code deliberately means the
+  // outcome, not the cause, so a future server `reason` cannot falsify it (see
+  // notDeletedError). Distinct from TOKEN_NOT_FOUND (auth). Unlike the rest of this block,
+  // no transport emits it with a status — core synthesizes it from a 200 success response.
+  NOT_FOUND: "NOT_FOUND",
 
   // 401 errors
   MISSING_TOKEN: "MISSING_TOKEN",

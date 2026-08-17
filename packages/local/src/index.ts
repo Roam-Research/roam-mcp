@@ -67,6 +67,7 @@ export {
   CONFIG_VERSION,
   EXPECTED_API_VERSION,
   textResult,
+  successResult,
   imageResult,
   errorResult,
   getErrorMessage,
