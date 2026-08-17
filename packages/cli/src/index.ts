@@ -61,7 +61,7 @@ function writeImageToTemp(
 
 const program = new Command();
 
-program.name("roam").description("Roam Research CLI").version("0.10.0");
+program.name("roam").description("Roam Research CLI").version("0.11.0");
 
 // Helper to check if a Zod schema field is optional
 function isOptional(schema: z.ZodTypeAny): boolean {
