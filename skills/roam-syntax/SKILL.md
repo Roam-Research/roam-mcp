@@ -79,7 +79,7 @@ real pages, refs, and checkboxes.
 - <content> <roam uid="…" heading="2" childrenViewType="numbered" refs="3" hiddenChildren="1"/>
 ```
 
-- The trailing **`<roam .../>` tag** carries metadata: `uid` (always — use for follow-up calls),
+- The trailing **`<roam .../>` tag** carries metadata: `uid` — the handle for every follow-up call,
   optional `heading` (1–3), `childrenViewType`, `refs` (backlink count — high = edit with care),
   `hiddenChildren="N"` (the subtree was cut off by `maxDepth`; read deeper with a higher `maxDepth`
   before assuming you've seen everything), and `truncated="N"` (search/semantic results only: N
@@ -90,6 +90,12 @@ real pages, refs, and checkboxes.
   the user explicitly asks you to summarize or transform, do that.
 - A **block reference** reads as `((uid))<ref>preview</ref>`, where `<ref>` holds the referenced
   block's text. When **displaying**, show the preview text and drop the `((uid))` + tag.
+- **A `uid` should be there on every block.** If one is ever missing, that block's stored uid is
+  invalid (rare — legacy or imported content), and it **cannot be addressed**: `update_block`,
+  `delete_block` and `move_block` all require a uid. Leave that block alone. Show its content if
+  asked, but don't invent a uid and don't re-create its content elsewhere as a workaround — that
+  just duplicates it. This covers the `truncated="N"`-without-`uid` case above: with no uid you
+  can't fetch the full text, so don't edit that block from the visible prefix at all.
 
 ## Writing
 

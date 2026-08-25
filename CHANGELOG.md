@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Docs: `docs/architecture.md` §4/§6 rewritten for the hosted consumer's move from a caret range
+  to an **exact** core pin (2026-08-14) — nothing we publish reaches hosted without a deliberate
+  upgrade on their side. Records what they now pin about us (blob SHA-256 fingerprints,
+  `EXPECTED_API_VERSION`, the exact `dataTools` name list) and corrects a prior claim that
+  patches inside the pinned minor arrived automatically.
+
 ## 0.10.0 - 2026-08-02
 
 - **`get_graph_guidelines` now returns a `roamSyntax` field** — a compact, graph-agnostic guide
