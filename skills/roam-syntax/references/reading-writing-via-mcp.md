@@ -97,16 +97,16 @@ source (they can be capped, and nested refs are resolved inside them).
 
 ## Which tool for what
 
-| Goal                              | Tool                                                                                               |
-| --------------------------------- | -------------------------------------------------------------------------------------------------- |
-| New page (optionally with body)   | `create_page` (parses markdown)                                                                    |
-| New block(s), possibly nested     | `create_block` (parses markdown; target by parentUid/pageTitle/dailyNotePage; `nestUnder` a child) |
-| Quick capture to a daily note     | `append_to_daily_note` (append-only; parses markdown trees like the create ops)                    |
-| Edit one block's text             | `update_block` (literal string; + `heading`/`childrenViewType` params)                             |
-| Reorder / reparent a block        | `move_block`                                                                                       |
-| Set a heading / numbered children | `update_block` params (not `#` / `1.` in the string)                                               |
-| Comment on a human's block        | `add_comment` (preserves the original)                                                             |
-| Delete                            | `delete_block` / `delete_page` (irreversible; rewrites referrers — confirm first)                  |
+| Goal                              | Tool                                                                                                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| New page (optionally with body)   | `create_page` (parses markdown)                                                                                                                                    |
+| New block(s), possibly nested     | `create_block` (parses markdown; target by parentUid/pageTitle/dailyNotePage; `nestUnder` a child)                                                                 |
+| Quick capture to a daily note     | `append_to_daily_note` (append-only; parses markdown trees like the create ops)                                                                                    |
+| Edit one block's text             | `update_block` (literal string; + `heading`/`childrenViewType` params)                                                                                             |
+| Reorder / reparent a block        | `move_block`                                                                                                                                                       |
+| Set a heading / numbered children | `update_block` params (not `#` / `1.` in the string)                                                                                                               |
+| Comment on a human's block        | `add_comment` (preserves the original)                                                                                                                             |
+| Delete                            | `delete_block` / `delete_page` (irreversible; rewrites referrers — confirm first; `NOT_FOUND` error = the delete did not happen; read the message before retrying) |
 
 - `create_page` does populate a body from `markdown` — you do **not** need a follow-up `create_block`.
 - A numbered list = create the parent, then `update_block(uid, childrenViewType: "numbered")` —

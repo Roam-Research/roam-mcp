@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { CallToolResult, RoamActionClient } from "../types.js";
-import { textResult } from "../types.js";
+import { successResult } from "../types.js";
 
 // Left-sidebar "Shortcuts" management. These are graph data (the shortcut list is
 // stored in the graph — which is why get_graph_guidelines can already return
@@ -43,8 +43,8 @@ export async function addShortcut(
   // so this action does NOT take the `{ page: { uid } }` wrapper that
   // data.page.delete/update use. Verified against the live local API.
   const args = params.index !== undefined ? [params.uid, params.index] : [params.uid];
-  await client.call("data.page.addShortcut", args);
-  return textResult({ success: true });
+  const response = await client.call("data.page.addShortcut", args);
+  return successResult(response.result);
 }
 
 export async function removeShortcut(
@@ -52,6 +52,6 @@ export async function removeShortcut(
   params: RemoveShortcutParams,
 ): Promise<CallToolResult> {
   // Positional, mirroring roamAlphaAPI.data.page.removeShortcut(uid).
-  await client.call("data.page.removeShortcut", [params.uid]);
-  return textResult({ success: true });
+  const response = await client.call("data.page.removeShortcut", [params.uid]);
+  return successResult(response.result);
 }

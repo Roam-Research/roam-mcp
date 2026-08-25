@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { CallToolResult, GetBlockResponse, RoamActionClient } from "../types.js";
-import { textResult, RoamError, ErrorCodes } from "../types.js";
+import { textResult, successResult, notDeletedError, RoamError, ErrorCodes } from "../types.js";
 import { isRelativeDateWord, MM_DD_YYYY, resolveDailyNotePage } from "../relative-date.js";
 
 // Schemas
@@ -243,23 +243,31 @@ export async function updateBlock(
   if (params.childrenViewType !== undefined) block["children-view-type"] = params.childrenViewType;
   if (params.textAlign !== undefined) block["text-align"] = params.textAlign;
 
-  await client.call("data.block.update", [{ block }]);
-  return textResult({ success: true });
+  const response = await client.call("data.block.update", [{ block }]);
+  return successResult(response.result);
 }
 
 export async function deleteBlock(
   client: RoamActionClient,
   params: DeleteBlockParams,
 ): Promise<CallToolResult> {
-  await client.call("data.block.delete", [{ block: { uid: params.uid } }]);
-  return textResult({ success: true });
+  const response = await client.call<{ deleted?: boolean; reason?: unknown } | null>(
+    "data.block.delete",
+    [{ block: { uid: params.uid } }],
+  );
+  // Strictly `=== false`: current Roam servers report {deleted: false} when the target
+  // didn't exist; an ABSENT field means an older Roam that doesn't report — status quo.
+  if (response.result?.deleted === false) {
+    throw notDeletedError("block", params.uid, response.result.reason);
+  }
+  return successResult(response.result);
 }
 
 export async function moveBlock(
   client: RoamActionClient,
   params: MoveBlockParams,
 ): Promise<CallToolResult> {
-  await client.call("data.block.move", [
+  const response = await client.call("data.block.move", [
     {
       location: {
         "parent-uid": params.parentUid,
@@ -270,7 +278,7 @@ export async function moveBlock(
       },
     },
   ]);
-  return textResult({ success: true });
+  return successResult(response.result);
 }
 
 export async function getBacklinks(
