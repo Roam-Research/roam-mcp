@@ -419,7 +419,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "delete_page",
-    "Delete a page and all its blocks — irreversible. If the page is referenced elsewhere, deleting it also edits every block that links to it — those `[[page]]` references are removed (graph surgery, not just removing the page). Inspect with get_page first: its header shows the page's `refs:` count (how many blocks link to it). If `refs:` is non-zero, or the page has substantial content, confirm with the user before deleting. For cleanup, only delete pages created this task or named by the user." +
+    "Delete a page and all its blocks — irreversible. If the page is referenced elsewhere, deleting it also edits every block or page title that links to it — `[[Page Name]]` becomes plain text `Page Name`, with tags and attributes similarly de-linked (graph surgery, not just removing the page). Inspect with get_page first: its header shows the page's `refs:` count (how many blocks link to it). If `refs:` is non-zero, or the page has substantial content, confirm with the user before deleting. For cleanup, only delete pages created this task or named by the user." +
       GUIDELINES_NOTE,
     DeletePageSchema,
     deletePage,
