@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.0 - 2026-08-26
 
 - **`delete_block` / `delete_page` can now report failure**: Roam servers (from the
   corresponding Roam release) return a `{deleted: boolean}` report for deletes — an
