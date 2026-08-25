@@ -122,7 +122,11 @@ A tool definition may also carry an optional `outputSchema` (declared on the 9 w
   gated on the report's `reason` discriminator (`"not-found"`/absent → the confident
   "already gone, don't retry" wording; any other value → a message quoting it that does not
   claim the target is gone). An absent `deleted` means an older Roam and keeps pre-0.11
-  behavior.
+  behavior. Because core overwrites any result-level `success` with `true`, server handlers
+  must report successful outcomes through operation-specific fields such as `deleted`.
+  Failed operations must use the transport's error-response path — returning
+  `{success: false}` or an `error` field inside a successful `result` would be exposed as a
+  success instead.
 - `withGraphField` carries the resolved graph identity as a structured `graph` field — injected into `structuredContent` (write tools) and into the result's JSON text body when it parses as an object (content-only reads) — instead of a `"Roam graph: …"` text prefix. **Since 0.8.0** the value is the identifier the caller passed in the `graph` arg (echoed; nickname or name), falling back to the canonical graph name when no `graph` arg was passed; it still overwrites any `graph` key the backend returned, so a backend cannot spoof it. (Before 0.8.0 it was always the canonical name.) `GUIDELINES_NOTE` is appended to client-tool descriptions to nudge `get_graph_guidelines`.
 
 ### 2f. Client conventions & the error envelope
@@ -200,7 +204,7 @@ Two consequences. We **cannot ship hosted agents a fix or a fact by publishing a
 
 ### What each bump level is allowed to contain
 
-- **Patch (`0.6.x`)** — behavior-preserving only: docs, tests, type-only changes, and **copy** (tool/param descriptions). By explicit exception (decided for `0.9.2`), a patch **may also add a local-only tool to `desktopUiTools`**: the hosted transport omits that array entirely, so such an addition cannot reach the hosted consumer through a caret-range patch upgrade — which is the safety rationale this rule protects.
+- **Patch (`0.6.x`)** — behavior-preserving only: docs, tests, type-only changes, and **copy** (tool/param descriptions). By explicit exception (decided for `0.9.2`), a patch **may also add a local-only tool to `desktopUiTools`**: the hosted transport omits that array entirely, so the addition cannot alter its tool surface. That transport boundary — not a dependency range — is the safety rationale for the exception; the hosted consumer's exact pin independently prevents any release from arriving automatically.
   - ⚠️ Tool and parameter **descriptions are part of `dataTools`** and ship straight to the hosted agent. So "just copy" still reaches a different transport — keep it **transport-neutral** (no local-isms like "configured"; prefer "available"). The recent neutralizing of the `graph` param description is the model here.
 - **Minor (`0.7.0`)** — additive only: new exports; new tools that are **transport-safe**; new **optional** `RouteToolCallOptions` fields with safe defaults. A new local-only tool must go in `desktopUiTools` (which the hosted side omits) or stay a standalone in `local` — never in `dataTools`.
   - **A new `dataTools` tool must be wired in every transport that serves it**, not just published here. Core only exposes the schema, description, and `client.call("data.X.Y", ...)` operation; each transport still needs its own action handler. The local Desktop API must expose the action through Roam's local API, and the hosted MCP backend must expose the same action through its hosted dispatcher. If either side is missing, that transport fails independently (for example, hosted may return `ACTION_NOT_AVAILABLE`). Publishing the tool in `core` alone is not enough. When adding a `dataTools` tool, ask a human operator to check the main private Roam codebase for the corresponding local-API and hosted-dispatcher wiring before release.
@@ -243,7 +247,7 @@ Their side hard-codes facts about core beyond the version. These don't block a p
 ## 8. Open questions (feedback welcome)
 
 1. **Internal infra references in committed core (resolved).** Core's source comments and the published package READMEs previously named the hosted backend's internal infrastructure; these have been neutralized to transport-agnostic descriptions so the open-source repo stays clean.
-2. **No automated guard on the contract.** Nothing today stops a patch from breaking the caret-pinned hosted consumer. Worth adding a public-surface snapshot test (e.g. a checked-in `index.d.ts` snapshot, or an api-extractor report) that fails CI on an unintended surface change?
+2. **No automated pre-publish guard on the public surface.** The exact pin prevents a newly published change from reaching the hosted consumer automatically, but nothing in this repo catches an accidental public-surface change before publication or before that consumer's deliberate upgrade review. Worth adding a public-surface snapshot test (e.g. a checked-in `index.d.ts` snapshot, or an api-extractor report) that fails CI on an unintended change?
 3. **Documented SemVer policy.** Should `core`'s README / `package.json` state the patch/minor/major policy from §6 explicitly, so _all_ consumers (not just the hosted one) know what a caret range buys them?
 4. ~~**Caret vs exact on the hosted side.**~~ **Answered 2026-08-14:** the hosted consumer
    moved to an exact pin (see §4/§6) — every upgrade is a deliberate, reviewable diff on

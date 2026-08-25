@@ -265,5 +265,8 @@ export async function deleteFile(
   params: FileDeleteParams,
 ): Promise<CallToolResult> {
   await client.call<undefined>("file.delete", [{ url: params.url }]);
+  // Unlike block/page deletes, file.delete currently returns no deletion report; preserve
+  // this legacy synthesized response. If its server contract later reports `deleted`, update
+  // this operation deliberately rather than silently discarding that report here.
   return textResult({ deleted: true });
 }

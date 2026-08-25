@@ -58,36 +58,42 @@ describe("delete report rendering", () => {
     expect(payload.error.message).toContain("do not retry");
   });
 
-  it("reason 'not-found' gets the confident copy (same as an absent reason)", async () => {
-    const result = await callWith(
-      "delete_block",
-      { uid: "gone1", graph: "test-graph" },
-      { deleted: false, reason: "not-found" },
-    );
-    expect(result.isError).toBe(true);
-    const payload = parsedText(result) as { error: Record<string, unknown> };
-    expect(payload.error.message).toContain("do not retry");
-    expect(payload.error.reason).toBe("not-found");
-  });
+  it.each(["delete_block", "delete_page"])(
+    "%s: reason 'not-found' gets the confident copy (same as an absent reason)",
+    async (tool) => {
+      const result = await callWith(
+        tool,
+        { uid: "gone1", graph: "test-graph" },
+        { deleted: false, reason: "not-found" },
+      );
+      expect(result.isError).toBe(true);
+      const payload = parsedText(result) as { error: Record<string, unknown> };
+      expect(payload.error.message).toContain("do not retry");
+      expect(payload.error.reason).toBe("not-found");
+    },
+  );
 
-  it("an UNKNOWN reason drops the already-gone claim and the do-not-retry advice", async () => {
-    // the whole point of the discriminator: a newer server semantics core doesn't know
-    // must not inherit copy asserting the target is gone
-    const result = await callWith(
-      "delete_page",
-      { uid: "p9", graph: "test-graph" },
-      { deleted: false, reason: "refused-by-policy" },
-    );
-    expect(result.isError).toBe(true);
-    const payload = parsedText(result) as { error: Record<string, unknown> };
-    expect(payload.error.code).toBe("NOT_FOUND");
-    expect(payload.error.reason).toBe("refused-by-policy");
-    const message = String(payload.error.message);
-    expect(message).toContain("refused-by-policy");
-    expect(message).toContain("Do NOT assume it is gone");
-    expect(message).not.toContain("do not retry");
-    expect(message).not.toContain("already");
-  });
+  it.each(["delete_block", "delete_page"])(
+    "%s: an UNKNOWN reason drops the already-gone claim and the do-not-retry advice",
+    async (tool) => {
+      // the whole point of the discriminator: a newer server semantics core doesn't know
+      // must not inherit copy asserting the target is gone
+      const result = await callWith(
+        tool,
+        { uid: "p9", graph: "test-graph" },
+        { deleted: false, reason: "refused-by-policy" },
+      );
+      expect(result.isError).toBe(true);
+      const payload = parsedText(result) as { error: Record<string, unknown> };
+      expect(payload.error.code).toBe("NOT_FOUND");
+      expect(payload.error.reason).toBe("refused-by-policy");
+      const message = String(payload.error.message);
+      expect(message).toContain("refused-by-policy");
+      expect(message).toContain("Do NOT assume it is gone");
+      expect(message).not.toContain("do not retry");
+      expect(message).not.toContain("already");
+    },
+  );
 
   it("delete_block: deleted:true passes through, merged under success:true (both channels)", async () => {
     const result = await callWith(
@@ -125,21 +131,27 @@ describe("delete report rendering", () => {
     },
   );
 
-  it("object merely LACKING deleted (not just null result) → passthrough, no error", async () => {
-    // the strict `=== false` must not fire on absence — this is the order-independence pin
-    const result = await callWith("delete_block", { uid: "b1", graph: "test-graph" }, {});
-    expect(result.isError).toBeFalsy();
-    expect(parsedText(result)).toEqual({ success: true, graph: "test-graph" });
-  });
+  it.each(["delete_block", "delete_page"])(
+    "%s: object merely LACKING deleted (not just null result) → passthrough, no error",
+    async (tool) => {
+      // the strict `=== false` must not fire on absence — this is the order-independence pin
+      const result = await callWith(tool, { uid: "b1", graph: "test-graph" }, {});
+      expect(result.isError).toBeFalsy();
+      expect(parsedText(result)).toEqual({ success: true, graph: "test-graph" });
+    },
+  );
 
-  it.each([0, "", "false"])(
-    'falsy-but-not-false junk %o renders no NOT_FOUND (pins the `=== false` strictness; the 0 and "" cases would fire under `==` or `!deleted`)',
-    async (junk) => {
-      const result = await callWith(
-        "delete_block",
-        { uid: "b1", graph: "test-graph" },
-        { deleted: junk },
-      );
+  it.each([
+    ["delete_block", 0],
+    ["delete_block", ""],
+    ["delete_block", "false"],
+    ["delete_page", 0],
+    ["delete_page", ""],
+    ["delete_page", "false"],
+  ])(
+    '%s: falsy-but-not-false junk %o renders no NOT_FOUND (pins the `=== false` strictness; 0 and "" would fire under `==` or `!deleted`)',
+    async (tool, junk) => {
+      const result = await callWith(tool, { uid: "b1", graph: "test-graph" }, { deleted: junk });
       expect(result.isError).toBeFalsy();
     },
   );
@@ -190,6 +202,15 @@ describe("notDeletedError — reason handling and sanitization", () => {
     const err = notDeletedError("block", "b1", ` spaced${"y".repeat(200)} `);
     expect((err.context as { reason: string }).reason.length).toBe(80);
     expect((err.context as { reason: string }).reason).not.toContain("\n");
+  });
+
+  it("bounds and JSON-quotes the uid in prose while preserving the exact context uid", () => {
+    const uid = '"quoted"\n' + "u".repeat(200);
+    const err = notDeletedError("block", uid, "not-found");
+    expect(err.message).toContain('\\"quoted\\" u');
+    expect(err.message).not.toContain("\n");
+    expect(err.message).not.toContain("u".repeat(81));
+    expect(err.context?.uid).toBe(uid);
   });
 });
 

@@ -12,8 +12,8 @@
   retry. `deleted: true` surfaces as `{success: true, deleted: true}`
   (declared UNTYPED via `DeleteOutput` — `SuccessOutput.extend` with `deleted: z.unknown()`,
   passthrough preserved — so no future server value can fail transport validation after a
-  committed delete). The tool descriptions are unchanged — the error is self-describing;
-  the READMEs and the opt-in `roam-syntax` skill reference carry the note instead.
+  committed delete). The error is self-describing; the READMEs and the opt-in `roam-syntax`
+  skill reference carry the human-facing compatibility and retry guidance.
   **Version tolerance / cross-repo invariant:** an ABSENT `deleted` field means an older
   Roam that doesn't report, which keeps the previous behavior exactly (checked strictly
   with `=== false`). The report also carries a `reason` discriminator: `"not-found"` — or
@@ -23,6 +23,10 @@
   the target is gone. A future cause MUST use a new `reason` rather than inherit
   `"not-found"`. A failed deletion commit on current servers arrives as an ordinary
   error response (never a success envelope), so no report is involved.
+- **Model-facing `delete_page` copy corrected:** the tool description previously said page
+  references were removed when their page was deleted. It now accurately says referrers are
+  de-linked in place — for example, `[[Page Name]]` becomes plain text `Page Name` — including
+  references in block strings and page titles, with tags and attributes similarly de-linked.
 - CLI: `roam delete-block` / `roam delete-page` on a nonexistent uid now print the error
   JSON and **exit 1** (previously exit 0 with success output).
 - Internal contract change, **no observable difference today outside the deletes**: the write/UI

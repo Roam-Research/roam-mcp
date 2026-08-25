@@ -150,7 +150,7 @@ This keeps `@inquirer/prompts` out of the normal MCP server path while keeping s
 
 `@roam-research/roam-tools-local` pins core exactly, and `@roam-research/roam-mcp` / `@roam-research/roam-cli` pin local exactly. These packages are tested and released in lockstep when they are published together; semver ranges would allow untested sibling combinations.
 
-This is separate from the hosted transport's dependency on core. The hosted MCP intentionally uses a caret range for `@roam-research/roam-tools-core`, which is why core patch releases must remain contract-safe.
+This is separate from the hosted transport's dependency on core. The hosted MCP pins `@roam-research/roam-tools-core` exactly and adopts upgrades deliberately. Core patch releases must still remain contract-safe for other ranged consumers and provide a trustworthy SemVer signal to every reviewer.
 
 ### Alternatives considered
 

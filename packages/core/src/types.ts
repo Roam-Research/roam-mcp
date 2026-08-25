@@ -46,6 +46,10 @@ export function successResult(result: unknown): CallToolResult {
 // is the minimal safe rendering until one exists.)
 export function notDeletedError(kind: "block" | "page", uid: string, reason: unknown): RoamError {
   const reReadTool = kind === "block" ? "get_block" : "get_page";
+  // `uid` is caller-controlled and Roam only requires it to be a string. Bound and
+  // JSON-quote its PROSE representation so a custom uid cannot escape the quoted span;
+  // error context below deliberately keeps the exact uid for programmatic consumers.
+  const shownUid = JSON.stringify(uid.replace(/\s+/g, " ").slice(0, 80));
   // absent/null (no reason given) reads the same as the one cause that exists today
   const known = reason === undefined || reason === null || reason === "not-found";
   // `reason` is server-controlled text and this message is prose an agent is told to act on
@@ -56,13 +60,13 @@ export function notDeletedError(kind: "block" | "page", uid: string, reason: unk
     bounded !== undefined ? JSON.stringify(bounded) : `a non-string value (${typeof reason})`;
   return new RoamError(
     known
-      ? `Nothing was deleted: no ${kind} with uid "${uid}" exists in this graph. If you ` +
+      ? `Nothing was deleted: no ${kind} with uid ${shownUid} exists in this graph. If you ` +
           `deleted an ancestor earlier, or are retrying a delete that timed out, it is ` +
           `already gone — do not retry. Otherwise the uid may be stale, mistyped, or from ` +
           `a different graph: re-locate the target via search before acting further. Other ` +
           `uids in a sweep are unaffected.`
       : `Nothing was deleted: the server gave reason ${shown} for the ${kind} with uid ` +
-          `"${uid}". Do NOT assume it is gone — re-read with ${reReadTool} to see the ` +
+          `${shownUid}. Do NOT assume it is gone — re-read with ${reReadTool} to see the ` +
           `current state before acting further.`,
     ErrorCodes.NOT_FOUND,
     bounded !== undefined ? { uid, reason: bounded } : { uid },
