@@ -439,8 +439,9 @@ export interface LinkedReference {
   path?: string[]; // breadcrumb path as markdown strings (vector via ai-md/block-path-markdown)
 }
 
-// `shown` = results.length (hidden filtering can shorten it); `note` only when the preview's
-// take consumed candidates and more remain (has-more is NOT `total > shown`)
+// An approximate preview (up to 5 referrers, newest entity ids first — not get_backlinks' first
+// page): `total` is the raw referrer count (hidden and rootless included, so it can exceed
+// get_backlinks' total), `shown` = results.length, `note` when the raw count exceeds 5
 export interface LinkedReferencesPreview {
   total: number;
   shown: number;

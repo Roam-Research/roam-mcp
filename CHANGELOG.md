@@ -4,12 +4,13 @@
 
 - **`get_page` / `get_block` describe the new `linkedReferences` preview.** Roam servers
   (from the corresponding Roam release) now embed a small linked-references preview as a
-  sibling key of `markdown`: `{total, shown, results, note?}` — up to 5 of the most recent
-  references in APPROXIMATE order (a bounded scan of the refs index by entity id, which
-  correlates with recency, instead of pulling and sorting every referrer — flat cost on hub
+  sibling key of `markdown`: `{total, shown, results, note?}` — up to 5 recent references
+  selected and ordered APPROXIMATELY (a bounded scan of the refs index by entity id, which
+  correlates with recency, instead of pulling and sorting every referrer — bounded cost on hub
   pages), rendered shallow, `results` items shape-identical to `get_backlinks` items, `total`
-  the raw referrer count (hidden and rootless included), `note` when more exist. It is a
-  preview: `get_backlinks` is the exact, sortable, pageable list. **The data itself comes from
+  the raw referrer count (hidden and rootless included, so it can exceed `get_backlinks`'
+  total), `note` when that raw count exceeds 5. It is a preview, not `get_backlinks`' first
+  page: `get_backlinks` (from offset 0) is the exact, sortable, pageable list. **The data itself comes from
   the Roam server and reaches every existing client without a core release** — read tools are
   schema-less and core passes read results through verbatim — so this release only updates the
   model-facing copy and the public TS types. The key is absent on older Roam builds (and if the
