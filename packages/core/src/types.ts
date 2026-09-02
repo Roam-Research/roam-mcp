@@ -165,6 +165,9 @@ export const ErrorCodes = {
   // notDeletedError). Distinct from TOKEN_NOT_FOUND (auth). Unlike the rest of this block,
   // no transport emits it with a status — core synthesizes it from a 200 success response.
   NOT_FOUND: "NOT_FOUND",
+  // Core-synthesized when every item in a batch write failed with MIXED per-item codes
+  // (a batch whose items share one code surfaces that code instead). No transport emits it.
+  BATCH_FAILED: "BATCH_FAILED",
 
   // 401 errors
   MISSING_TOKEN: "MISSING_TOKEN",

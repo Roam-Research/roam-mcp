@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { dataTools, findTool, stripUndeclaredStructuredContent } from "../src/tools.js";
 import { textResult } from "../src/types.js";
 
-// Output schemas are WRITE-ONLY: the 9 write tools declare a schema (the SDK
+// Output schemas are WRITE-ONLY: the 11 write tools declare a schema (the SDK
 // validates structuredContent against it on success); the 9 read tools are
 // content-only. These tests pin that split, the additive textResult
 // structuredContent path, and representative write payloads. (Why write-only +
@@ -13,7 +13,9 @@ const WRITE_TOOLS = [
   "create_block",
   "append_to_daily_note",
   "update_block",
+  "update_blocks",
   "delete_block",
+  "delete_blocks",
   "move_block",
   "add_comment",
   "delete_page",
@@ -21,8 +23,8 @@ const WRITE_TOOLS = [
 ];
 
 describe("output schemas are declared on write tools only", () => {
-  it("the 9 write tools declare an outputSchema, the 9 reads do not", () => {
-    expect(dataTools.length).toBe(18);
+  it("the 11 write tools declare an outputSchema, the 9 reads do not", () => {
+    expect(dataTools.length).toBe(20);
     const withSchema = dataTools
       .filter((t) => t.outputSchema)
       .map((t) => t.name)
@@ -68,6 +70,33 @@ describe("representative write structuredContent validates against each schema",
     ["delete_page", { success: true, deleted: "tolerated-by-design" }],
     // graph field injected by withGraphField is declared + accepted
     ["create_block", { uids: ["x"], graph: "my-graph" }],
+    // batch reports: a mixed batch (success false, an ok:false item) and a delete report
+    // whose not-found item carries the server's untyped `deleted`/`reason` facts
+    [
+      "update_blocks",
+      {
+        success: false,
+        succeeded: 1,
+        failed: 1,
+        results: [
+          { uid: "a", ok: true },
+          { uid: "b", ok: false, code: "VALIDATION_ERROR", message: "'b' is a page, not a block" },
+        ],
+      },
+    ],
+    [
+      "delete_blocks",
+      {
+        success: false,
+        succeeded: 1,
+        failed: 1,
+        graph: "my-graph",
+        results: [
+          { uid: "a", ok: true, deleted: true, note: "deleted with its ancestor 'z'" },
+          { uid: "b", ok: false, deleted: false, reason: "not-found" },
+        ],
+      },
+    ],
   ];
   for (const [name, payload] of cases) {
     it(`${name} accepts ${JSON.stringify(payload).slice(0, 44)}`, () => {
@@ -93,6 +122,19 @@ describe("schemas are open (passthrough keeps + advertises extra keys)", () => {
       expect(Object.keys(findTool(name)!.outputSchema!.shape), name).toContain("deleted");
     }
     expect(Object.keys(findTool("update_block")!.outputSchema!.shape)).not.toContain("deleted");
+  });
+
+  it("delete_blocks keeps passthrough at both levels (envelope and result item)", () => {
+    const parsed = findTool("delete_blocks")!.outputSchema!.safeParse({
+      results: [{ uid: "a", ok: true, futureField: 1 }],
+      futureAggregate: 2,
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success)
+      expect(parsed.data).toMatchObject({
+        results: [{ uid: "a", ok: true, futureField: 1 }],
+        futureAggregate: 2,
+      });
   });
 
   it("delete_block (SuccessOutput.extend) keeps passthrough", () => {

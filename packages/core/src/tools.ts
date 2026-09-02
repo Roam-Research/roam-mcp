@@ -26,7 +26,9 @@ import {
   AppendToDailyNoteSchema,
   GetBlockSchema,
   UpdateBlockSchema,
+  UpdateBlocksSchema,
   DeleteBlockSchema,
+  DeleteBlocksSchema,
   MoveBlockSchema,
   GetBacklinksSchema,
   AddCommentSchema,
@@ -35,7 +37,9 @@ import {
   appendToDailyNote,
   getBlock,
   updateBlock,
+  updateBlocks,
   deleteBlock,
+  deleteBlocks,
   moveBlock,
   getBacklinks,
   addComment,
@@ -302,7 +306,7 @@ const EXTENSION: ToolAnnotations = {
 
 // ----------------------------------------------------------------------------
 // Output schemas (MCP tools/list structured-result hints) — WRITE TOOLS ONLY.
-// The 9 write tools declare a schema (and emit structuredContent); the 9 read
+// The 11 write tools declare a schema (and emit structuredContent); the 9 read
 // tools are content-only. Why write-only:
 //   - structuredContent duplicates the whole result into the text channel
 //     (textResult already JSON-stringifies it), so a schema on big reads
@@ -337,6 +341,31 @@ const UidOutput = z
   .passthrough();
 const UidsOutput = z
   .object({ uids: z.array(z.string()).optional(), graph: z.string().optional() })
+  .passthrough();
+// batch writes: `results` is positionally aligned with the input; `deleted`/`reason` stay
+// server-owned and untyped like DeleteOutput's `deleted`
+const BatchOutput = z
+  .object({
+    success: z.boolean().optional(),
+    succeeded: z.number().optional(),
+    failed: z.number().optional(),
+    graph: z.string().optional(),
+    results: z
+      .array(
+        z
+          .object({
+            uid: z.string().optional(),
+            ok: z.boolean().optional(),
+            code: z.string().optional(),
+            message: z.string().optional(),
+            note: z.string().optional(),
+            deleted: z.unknown(),
+            reason: z.unknown(),
+          })
+          .passthrough(),
+      )
+      .optional(),
+  })
   .passthrough();
 
 // Data Tools (require graph/client; reusable across local + hosted MCP transports)
@@ -386,12 +415,28 @@ export const dataTools: ClientToolDefinition[] = [
     { title: "Update block", annotations: EDIT, outputSchema: SuccessOutput },
   ),
   defineTool(
+    "update_blocks",
+    "Update up to 25 blocks in one round trip. Same per-item semantics as update_block: each item targets one block by `uid`, and `string` sets that block's literal text — NOT expanded into child blocks, and existing children are left untouched. List a block once; combine all its changes into one item. Items are applied together but reported separately: check `results` per item — some entries can fail while others succeed." +
+      GUIDELINES_NOTE,
+    UpdateBlocksSchema,
+    updateBlocks,
+    { title: "Update blocks", annotations: EDIT, outputSchema: BatchOutput },
+  ),
+  defineTool(
     "delete_block",
     'Delete a block and all its descendants — irreversible. If the block is referenced elsewhere, deletion REPLACES those ((uid)) refs with its text (graph surgery, not string removal — on approval you can instead delete the referencing blocks). Inspect with get_block first: its markdown flags referenced blocks with `refs="N"` (and `hiddenChildren="N"` for subtrees beyond maxDepth), and comments count as refs. If anything shows `refs`, or the subtree is large (~20+ blocks / 500+ words), check get_backlinks and confirm with the user before deleting. For cleanup, only delete blocks created this task or named by the user.' +
       GUIDELINES_NOTE,
     DeleteBlockSchema,
     deleteBlock,
     { title: "Delete block", annotations: DELETE, outputSchema: DeleteOutput },
+  ),
+  defineTool(
+    "delete_blocks",
+    'Delete up to 25 blocks and all their descendants in one round trip — irreversible. If a block is referenced elsewhere, deletion REPLACES those ((uid)) refs with its text (graph surgery, not string removal — on approval you can instead delete the referencing blocks). Inspect every uid with get_block first: its markdown flags referenced blocks with `refs="N"` (and `hiddenChildren="N"` for subtrees beyond maxDepth), and comments count as refs. If anything shows `refs`, or a subtree is large (~20+ blocks / 500+ words), check get_backlinks and confirm with the user before deleting. For cleanup, only delete blocks created this task or named by the user. Deleting an ancestor also deletes its descendants — a listed descendant reports `deleted with its ancestor`, not an error. Items are deleted together but reported separately: check `results` per item — some entries can fail while others succeed.' +
+      GUIDELINES_NOTE,
+    DeleteBlocksSchema,
+    deleteBlocks,
+    { title: "Delete blocks", annotations: DELETE, outputSchema: BatchOutput },
   ),
   defineTool(
     "move_block",

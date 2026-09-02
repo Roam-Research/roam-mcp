@@ -86,7 +86,8 @@ export const GetBlockSchema = z.object({
     .describe("Max depth of children to include in markdown (omit for full tree)"),
 });
 
-export const UpdateBlockSchema = z.object({
+// shared by update_block and update_blocks so the two cannot drift
+const BlockUpdateFields = z.object({
   uid: z.string().describe("Block UID"),
   string: z
     .string()
@@ -103,8 +104,30 @@ export const UpdateBlockSchema = z.object({
   textAlign: z.enum(["left", "center", "right", "justify"]).optional().describe("Text alignment"),
 });
 
+export const UpdateBlockSchema = BlockUpdateFields;
+
+export const UpdateBlocksSchema = z.object({
+  updates: z
+    .array(BlockUpdateFields)
+    .min(1)
+    .max(25)
+    .describe(
+      "Blocks to update, 1-25 items, each targeting one block by uid. `results` reports them in this order.",
+    ),
+});
+
 export const DeleteBlockSchema = z.object({
   uid: z.string().describe("Block UID to delete"),
+});
+
+export const DeleteBlocksSchema = z.object({
+  uids: z
+    .array(z.string())
+    .min(1)
+    .max(25)
+    .describe(
+      "Block UIDs to delete, 1-25 items, each with its whole subtree. A uid nested under another listed uid is redundant. `results` reports them in this order.",
+    ),
 });
 
 export const MoveBlockSchema = z.object({
@@ -147,7 +170,9 @@ export type CreateBlockParams = z.infer<typeof CreateBlockSchema>;
 export type AppendToDailyNoteParams = z.infer<typeof AppendToDailyNoteSchema>;
 export type GetBlockParams = z.infer<typeof GetBlockSchema>;
 export type UpdateBlockParams = z.infer<typeof UpdateBlockSchema>;
+export type UpdateBlocksParams = z.infer<typeof UpdateBlocksSchema>;
 export type DeleteBlockParams = z.infer<typeof DeleteBlockSchema>;
+export type DeleteBlocksParams = z.infer<typeof DeleteBlocksSchema>;
 export type MoveBlockParams = z.infer<typeof MoveBlockSchema>;
 export type GetBacklinksParams = z.infer<typeof GetBacklinksSchema>;
 
@@ -260,18 +285,24 @@ export async function getBlock(
   return textResult(response.result?.uid ? response.result : { found: false });
 }
 
-export async function updateBlock(
-  client: RoamActionClient,
-  params: UpdateBlockParams,
-): Promise<CallToolResult> {
+// camelCase → the kebab wire keys the server expects; keys only when defined (shared by both update tools)
+function blockUpdateWireFields(params: UpdateBlockParams): Record<string, unknown> {
   const block: Record<string, unknown> = { uid: params.uid };
   if (params.string !== undefined) block.string = params.string;
   if (params.open !== undefined) block.open = params.open;
   if (params.heading !== undefined) block.heading = params.heading;
   if (params.childrenViewType !== undefined) block["children-view-type"] = params.childrenViewType;
   if (params.textAlign !== undefined) block["text-align"] = params.textAlign;
+  return block;
+}
 
-  const response = await client.call("data.block.update", [{ block }]);
+export async function updateBlock(
+  client: RoamActionClient,
+  params: UpdateBlockParams,
+): Promise<CallToolResult> {
+  const response = await client.call("data.block.update", [
+    { block: blockUpdateWireFields(params) },
+  ]);
   return successResult(response.result);
 }
 
@@ -289,6 +320,129 @@ export async function deleteBlock(
     throw notDeletedError("block", params.uid, response.result.reason);
   }
   return successResult(response.result);
+}
+
+// --- Batch writes (update_blocks / delete_blocks) ---
+
+// one item of the server's per-item report (facts only; core derives success and copy)
+type BatchItemReport = Record<string, unknown>;
+
+const BATCH_UNSUPPORTED =
+  "This Roam build doesn't support batch block updates yet — use update_block / delete_block one at a time, or update Roam.";
+
+// Fail closed: a truncated, misaligned, or non-boolean-`ok` report surfaces as an error carrying the
+// raw payload, never as synthesized outcomes (a bad `ok` would also fail the SDK's schema check).
+function validateBatchReport(action: string, uids: string[], payload: unknown): BatchItemReport[] {
+  const malformed = (why: string) =>
+    new RoamError(
+      `${action} returned a malformed batch report (${why}), so no per-item outcome can be trusted. Re-read the targets with get_block before retrying.`,
+      ErrorCodes.INTERNAL_ERROR,
+      { action, payload },
+    );
+  const results = (payload as { results?: unknown } | null | undefined)?.results;
+  if (!Array.isArray(results)) throw malformed("`results` is not an array");
+  if (results.length !== uids.length)
+    throw malformed(`expected ${uids.length} items, got ${results.length}`);
+  return results.map((item, i) => {
+    if (item === null || typeof item !== "object" || Array.isArray(item))
+      throw malformed(`item ${i} is not an object`);
+    const report = item as BatchItemReport;
+    if (report.uid !== uids[i]) throw malformed(`item ${i} does not report its input uid`);
+    if (typeof report.ok !== "boolean") throw malformed(`item ${i} has a non-boolean \`ok\``);
+    return report;
+  });
+}
+
+// homogeneous NOT_FOUND copy: same reason gating as notDeletedError (see its comment)
+function missingDeletesMessage(uids: string[], results: BatchItemReport[]): string {
+  if (results.length === 1) return notDeletedError("block", uids[0], results[0].reason).message;
+  const allKnown = results.every(
+    (r) => r.reason === undefined || r.reason === null || r.reason === "not-found",
+  );
+  return allKnown
+    ? `Nothing was deleted: none of the ${results.length} blocks exist in this graph. If you ` +
+        `deleted an ancestor earlier, or are retrying a delete that timed out, they are already ` +
+        `gone — do not retry. Otherwise the uids may be stale, mistyped, or from a different ` +
+        `graph: re-locate the targets via search before acting further. See the error context ` +
+        `for the per-item report.`
+    : `Nothing was deleted: the server gave reasons this version doesn't recognize for some of ` +
+        `the ${results.length} blocks. Do NOT assume they are gone — re-read with get_block to ` +
+        `see the current state before acting further. See the error context for the per-item ` +
+        `report.`;
+}
+
+// 0 successes ⇒ a normal MCP error (structuredContent cannot ride an error result)
+function batchFailureError(uids: string[], results: BatchItemReport[]): RoamError {
+  // not-found deletes carry no wire code: map them to the synthesized NOT_FOUND a single delete
+  // gets BEFORE the homogeneity check
+  const codes = results.map((r) =>
+    typeof r.code === "string" ? r.code : r.deleted === false ? ErrorCodes.NOT_FOUND : undefined,
+  );
+  const shared = codes[0];
+  const homogeneous = shared !== undefined && codes.every((c) => c === shared);
+  const context = { results, succeeded: 0, failed: results.length };
+  if (homogeneous && shared === ErrorCodes.NOT_FOUND) {
+    return new RoamError(missingDeletesMessage(uids, results), shared, context);
+  }
+  const first = results[0].message;
+  const sharedMessage =
+    homogeneous && typeof first === "string" && results.every((r) => r.message === first)
+      ? first
+      : `All ${results.length} items failed — see the error context for the per-item report`;
+  return new RoamError(sharedMessage, homogeneous ? shared : ErrorCodes.BATCH_FAILED, context);
+}
+
+async function runBatch(
+  client: RoamActionClient,
+  action: string,
+  args: Record<string, unknown>,
+  uids: string[],
+): Promise<CallToolResult> {
+  let response;
+  try {
+    response = await client.call<unknown>(action, [args]);
+  } catch (error) {
+    // a Roam build without the batch actions: the API-version gate can't see it (major.minor
+    // unchanged), so turn the raw code into advice, keeping the transport's own code and context
+    if (
+      error instanceof RoamError &&
+      (error.code === ErrorCodes.UNKNOWN_ACTION || error.code === ErrorCodes.ACTION_NOT_AVAILABLE)
+    ) {
+      const apiVersion = error.context?.apiVersion;
+      const message =
+        typeof apiVersion === "string"
+          ? `${BATCH_UNSUPPORTED} This Roam build reports API version ${apiVersion}.`
+          : BATCH_UNSUPPORTED;
+      throw new RoamError(message, error.code, error.context);
+    }
+    throw error;
+  }
+  const results = validateBatchReport(action, uids, response.result);
+  const succeeded = results.filter((r) => r.ok === true).length;
+  const failed = results.length - succeeded;
+  if (succeeded === 0) throw batchFailureError(uids, results);
+  // not successResult (it would stamp a mixed batch success:true); aggregates derive from
+  // `results` alone, and ≥1 success stays isError:false
+  return textResult({ success: failed === 0, succeeded, failed, results });
+}
+
+export async function updateBlocks(
+  client: RoamActionClient,
+  params: UpdateBlocksParams,
+): Promise<CallToolResult> {
+  return runBatch(
+    client,
+    "data.block.updateMany",
+    { updates: params.updates.map(blockUpdateWireFields) },
+    params.updates.map((u) => u.uid),
+  );
+}
+
+export async function deleteBlocks(
+  client: RoamActionClient,
+  params: DeleteBlocksParams,
+): Promise<CallToolResult> {
+  return runBatch(client, "data.block.deleteMany", { uids: params.uids }, params.uids);
 }
 
 export async function moveBlock(

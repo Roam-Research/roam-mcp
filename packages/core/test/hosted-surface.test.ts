@@ -24,6 +24,7 @@ const HOSTED_SURFACE = [
   "create_page",
   "datalog_query",
   "delete_block",
+  "delete_blocks",
   "delete_page",
   "get_backlinks",
   "get_block",
@@ -35,6 +36,7 @@ const HOSTED_SURFACE = [
   "search",
   "search_templates",
   "update_block",
+  "update_blocks",
   "update_page",
 ];
 

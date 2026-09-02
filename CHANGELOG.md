@@ -36,6 +36,31 @@
   no `outputSchema` change and no echo in the response. A Roam server without the
   corresponding release drops the key and creates the blocks open — a silent no-op, never an
   error.
+- **New `update_blocks` / `delete_blocks` tools** (`dataTools` 18 → 20; schema-bearing write
+  tools 9 → 11). 1–25 items, one round trip, backed by the new `data.block.updateMany` /
+  `data.block.deleteMany` actions. `update_blocks` items are exactly `update_block`'s fields
+  (shared `BlockUpdateFields` schema, so single and batch can't drift); `delete_blocks` takes
+  `uids`. **Per-item report contract:** the server emits facts — `results`, positionally
+  aligned with the input, each item `{uid, ok}` plus `deleted`/`reason`/`note`/`code`/
+  `message` — and core derives `success`/`succeeded`/`failed` from it, ignoring any server
+  aggregate, after validating it fail-closed (array, input length, per-position uid, boolean
+  `ok`; a violation is an `INTERNAL_ERROR` carrying the raw payload — outcomes are never
+  synthesized). ≥1 succeeding item ⇒ `isError: false` with the report as
+  `structuredContent`; 0 successes ⇒ an error carrying the report in its context, using the
+  shared per-item code (all-missing deletes map to the same core-synthesized `NOT_FOUND` a
+  single delete gets) or the **new `ErrorCodes.BATCH_FAILED`** when the codes differ
+  (additive enum member). Against a Roam build without the actions, both degrade to a
+  "use update_block / delete_block one at a time, or update Roam" message under the
+  transport's own `UNKNOWN_ACTION` / `ACTION_NOT_AVAILABLE` code, naming the build's API
+  version when the transport reported one. **Hosted-consumer note:** the two new names are a
+  required edit in their `hosted-tool-names` fixture, and the hosted MCP only exposes the
+  tools once it bumps its exact `core` pin and its backend serves the two actions.
+- The local transport's 404 `UNKNOWN_ACTION` now carries the Roam build's `apiVersion` in the
+  `RoamError` context (Roam stamps it on error responses too; the message is unchanged), so
+  the degradation copy above can name the build the user is running.
+- Docs: `docs/architecture.md` §6 records that `EXPECTED_API_VERSION` is a wire-compatibility
+  signal, never a capability one — additive actions are feature-detected by catching
+  `UNKNOWN_ACTION` / `ACTION_NOT_AVAILABLE`, never by bumping its major.minor.
 
 ## 0.11.0 - 2026-08-26
 
