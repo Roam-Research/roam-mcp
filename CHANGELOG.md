@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.12.0 - 2026-09-02
 
 - **`get_page` / `get_block` describe the new `linkedReferences` preview.** Roam servers
   (from the corresponding Roam release) now embed a small linked-references preview as a
