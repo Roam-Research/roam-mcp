@@ -433,7 +433,7 @@ export async function updateBlocks(
 ): Promise<CallToolResult> {
   return runBatch(
     client,
-    "data.block.updateMany",
+    "data.block.updateBlocks",
     { updates: params.updates.map(blockUpdateWireFields) },
     params.updates.map((u) => u.uid),
   );
@@ -443,7 +443,7 @@ export async function deleteBlocks(
   client: RoamActionClient,
   params: DeleteBlocksParams,
 ): Promise<CallToolResult> {
-  return runBatch(client, "data.block.deleteMany", { uids: params.uids }, params.uids);
+  return runBatch(client, "data.block.deleteBlocks", { uids: params.uids }, params.uids);
 }
 
 export async function moveBlock(

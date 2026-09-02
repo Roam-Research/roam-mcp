@@ -47,7 +47,7 @@ describe("wire args", () => {
       ],
     });
     expect(wireArgs(client)).toEqual([
-      "data.block.updateMany",
+      "data.block.updateBlocks",
       {
         updates: [
           {
@@ -74,7 +74,7 @@ describe("wire args", () => {
   it("delete_blocks sends the uids verbatim", async () => {
     const client = clientReturning({ results: [ok("a"), ok("b")] });
     await deleteBlocks(client, { uids: ["a", "b"] });
-    expect(wireArgs(client)).toEqual(["data.block.deleteMany", { uids: ["a", "b"] }]);
+    expect(wireArgs(client)).toEqual(["data.block.deleteBlocks", { uids: ["a", "b"] }]);
   });
 });
 
@@ -248,7 +248,7 @@ describe("malformed reports fail closed", () => {
       const roamError = error as RoamError;
       expect(roamError.code).toBe("INTERNAL_ERROR");
       expect(roamError.message).toContain("malformed batch report");
-      expect(roamError.context).toEqual({ action: "data.block.deleteMany", payload });
+      expect(roamError.context).toEqual({ action: "data.block.deleteBlocks", payload });
     });
   }
 });

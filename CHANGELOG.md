@@ -43,10 +43,12 @@
   corresponding release drops the key and creates the blocks open — a silent no-op, never an
   error.
 - **New `update_blocks` / `delete_blocks` tools** (`dataTools` 18 → 20; schema-bearing write
-  tools 9 → 11). 1–25 items, one round trip, backed by the new `data.block.updateMany` /
-  `data.block.deleteMany` actions. `update_blocks` items are exactly `update_block`'s fields
+  tools 9 → 11). 1–25 items, one round trip, backed by the new `data.block.updateBlocks` /
+  `data.block.deleteBlocks` actions. `update_blocks` items are exactly `update_block`'s fields
   (shared `BlockUpdateFields` schema, so single and batch can't drift); `delete_blocks` takes
-  `uids`. **Per-item report contract:** the server emits facts — `results`, positionally
+  `uids`. A uid repeated in `updates` fails the whole call server-side (`VALIDATION_ERROR` on the
+  hosted server; the local API reports it as a 500 like its other validation errors); repeated
+  `delete_blocks` uids are tolerated. **Per-item report contract:** the server emits facts — `results`, positionally
   aligned with the input, each item `{uid, ok}` plus `deleted`/`reason`/`note`/`code`/
   `message` — and core derives `success`/`succeeded`/`failed` from it, ignoring any server
   aggregate, after validating it fail-closed (array, input length, per-position uid, boolean

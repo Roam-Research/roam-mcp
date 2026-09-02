@@ -35,7 +35,7 @@ describe("RoamClient 404 UNKNOWN_ACTION", () => {
       token: "roam-graph-local-token-test",
       port: 3333,
     });
-    return client.call("data.block.deleteMany").then(
+    return client.call("data.block.deleteBlocks").then(
       () => undefined,
       (e: unknown) => e,
     );
@@ -44,13 +44,13 @@ describe("RoamClient 404 UNKNOWN_ACTION", () => {
   it("carries the server's apiVersion as error context", async () => {
     stubFetch({
       success: false,
-      error: { code: "UNKNOWN_ACTION", message: "data.block.deleteMany" },
+      error: { code: "UNKNOWN_ACTION", message: "data.block.deleteBlocks" },
       apiVersion: "1.1.5",
     });
     const error = await unknownAction();
     expect(error).toBeInstanceOf(RoamError);
     expect((error as RoamError).code).toBe(ErrorCodes.UNKNOWN_ACTION);
-    expect((error as RoamError).message).toBe("Unknown API action: data.block.deleteMany");
+    expect((error as RoamError).message).toBe("Unknown API action: data.block.deleteBlocks");
     expect((error as RoamError).context).toEqual({ apiVersion: "1.1.5" });
   });
 
