@@ -186,7 +186,8 @@ export interface GetBacklinksResponse {
   total: number;
   shown?: number; // results.length; hidden filtering runs after pagination, so it can be < limit
   results: BacklinkResult[];
-  // both present iff more exist; pass `offset: nextOffset` next (never offset + shown)
+  // both present iff a non-empty window was consumed and more remain (limit 0 emits neither);
+  // pass `offset: nextOffset` next (never offset + shown)
   note?: string;
   nextOffset?: number;
 }

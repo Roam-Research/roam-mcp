@@ -10,13 +10,19 @@
   client without a core release** — read tools are schema-less and core passes read results
   through verbatim — so this release only updates the model-facing copy and the public TS
   types. The key is absent on older Roam builds (and if the best-effort preview fails); a
-  target with no references reports an explicit `{total: 0, shown: 0, results: []}`. The
-  preview uses the flat `get_backlinks` ordering, not the app's grouped Linked References
-  view, and is never spliced into `markdown`.
-- **`get_backlinks` describes the new paging signals** `shown` (always) and, only when more
-  references exist, `note` + `nextOffset` (pass `offset: nextOffset` for the next page).
-  `shown` can be smaller than `limit` because hidden-block filtering runs after pagination,
-  which is exactly why `nextOffset` is server-computed rather than `offset + shown`.
+  target with no `:block/_refs` referrers reports an explicit `{total: 0, shown: 0, results: []}`
+  (that gate skips the pipeline, so a target referenced only by diagram nodes reports 0 there
+  while `get_backlinks` still lists them). The preview uses the flat `get_backlinks` ordering,
+  not the app's grouped Linked References view, and is never spliced into `markdown`.
+- **`get_backlinks` describes the new paging signals** `shown` (always) and, only when a
+  non-empty result window was consumed and more remain, `note` + `nextOffset` (pass `offset: nextOffset`
+  for the next page; a `limit` of 0 emits neither). `shown` can be smaller than `limit` because
+  hidden-block filtering runs after pagination, which is exactly why `nextOffset` is
+  server-computed rather than `offset + shown`.
+- **`get_backlinks` tie order changes** on the corresponding Roam release: referrers that share
+  a timestamp now order by entity id (deterministic per runtime; `desc` puts the newer one
+  first) instead of by incidental input order. The same change reaches the app's flat Linked
+  References view and `roam_query`.
 - `READ_FORMAT_NOTE` now documents the pre-existing `refs="N"` attribute on `<roam>` header
   tags (N blocks reference this page/block — call `get_backlinks` with that uid). It is a raw
   referrer count and is filtered differently from `linkedReferences.total`; the copy does not

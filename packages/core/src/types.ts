@@ -439,8 +439,8 @@ export interface LinkedReference {
   path?: string[]; // breadcrumb path as markdown strings (vector via ai-md/block-path-markdown)
 }
 
-// `shown` = results.length (hidden filtering can shorten it); `note` only when more exist
-// (has-more is NOT `total > shown`)
+// `shown` = results.length (hidden filtering can shorten it); `note` only when the preview's
+// take consumed candidates and more remain (has-more is NOT `total > shown`)
 export interface LinkedReferencesPreview {
   total: number;
   shown: number;
