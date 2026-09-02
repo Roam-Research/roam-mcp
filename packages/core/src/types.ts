@@ -428,10 +428,28 @@ export interface SearchTemplatesResponse {
   results: Template[];
 }
 
+// Shared item shape: get_backlinks results and the getPage/getBlock `linkedReferences` preview
+export interface LinkedReference {
+  uid: string;
+  type?: "page"; // Only present for page results
+  markdown: string;
+  path?: string[]; // breadcrumb path as markdown strings (vector via ai-md/block-path-markdown)
+}
+
+// `shown` = results.length (hidden filtering can shorten it); `note` only when more exist
+// (has-more is NOT `total > shown`)
+export interface LinkedReferencesPreview {
+  total: number;
+  shown: number;
+  results: LinkedReference[];
+  note?: string;
+}
+
 // getPage response
 export interface GetPageResponse {
   uid: string;
   markdown: string;
+  linkedReferences?: LinkedReferencesPreview; // absent on older servers / preview failure
   queriedAt: string;
 }
 
@@ -440,6 +458,7 @@ export interface GetBlockResponse {
   uid: string;
   markdown: string;
   path: string[]; // breadcrumb path as markdown strings (vector via ai-md/block-path-markdown)
+  linkedReferences?: LinkedReferencesPreview; // absent on older servers / preview failure
   queriedAt: string;
 }
 

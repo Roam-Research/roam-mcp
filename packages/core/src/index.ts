@@ -42,6 +42,8 @@ export type {
   SearchTemplatesResponse,
   GetPageResponse,
   GetBlockResponse,
+  LinkedReference,
+  LinkedReferencesPreview,
   Template,
   QueryResult,
   QueryResponse,

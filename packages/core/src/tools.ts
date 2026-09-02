@@ -191,7 +191,7 @@ const GUIDELINES_NOTE =
 // still fires (getDataTools) — hence this note must NOT name get_graph_guidelines,
 // which is the substring that marks a strippable nudge.
 const READ_FORMAT_NOTE =
-  '\n\nReturns Roam agent markdown (full syntax in this graph\'s guidelines `roamSyntax`). Each block ends with a `<roam uid="…"/>` tag that may carry `heading="N"`, `childrenViewType`, or `hiddenChildren="N"` (subtree cut off by maxDepth — read deeper to see it) — use the `uid` for follow-up ops, honor those attrs, and strip the whole tag before showing content to the user. `__text__` is italics (not bold). A `((uid))<ref>preview</ref>` is a block reference: when displaying, show the preview and drop the `((uid))` + tag; when writing back with update_block, pass only the content (not the leading `- `/indent or the `<roam>` tag) and keep `((uid))<ref>…</ref>` intact — the server reduces it to `((uid))`.';
+  '\n\nReturns Roam agent markdown (full syntax in this graph\'s guidelines `roamSyntax`). Each block ends with a `<roam uid="…"/>` tag that may carry `heading="N"`, `childrenViewType`, `hiddenChildren="N"` (subtree cut off by maxDepth — read deeper to see it), or `refs="N"` (N blocks reference it — get_backlinks with that uid reads them) — use the `uid` for follow-up ops, honor those attrs, and strip the whole tag before showing content to the user. `__text__` is italics (not bold). A `((uid))<ref>preview</ref>` is a block reference: when displaying, show the preview and drop the `((uid))` + tag; when writing back with update_block, pass only the content (not the leading `- `/indent or the `<roam>` tag) and keep `((uid))<ref>…</ref>` intact — the server reduces it to `((uid))`.';
 
 // Default MCP server `instructions` (orientation block). Shared by the stdio server
 // (packages/mcp) and the hosted server — the latter may override it per client
@@ -469,7 +469,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_page",
-    "Get a page's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large pages." +
+    "Get a page's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large pages. The result also carries `linkedReferences`: up to 5 references to this page (newest-created first, flat) with `total` and `shown` counts." +
       READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     GetPageSchema,
@@ -478,7 +478,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_block",
-    "Get a block's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large blocks." +
+    "Get a block's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large blocks. The result also carries `linkedReferences`: up to 5 references to this block (newest-created first, flat) with `total` and `shown` counts." +
       READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     GetBlockSchema,
@@ -487,7 +487,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_backlinks",
-    "Get paginated backlinks (linked references) for a page or block, formatted as markdown. Returns total count and results with optional breadcrumb paths." +
+    "Get paginated backlinks (linked references) for a page or block, formatted as markdown. Returns total count, `shown`, and results with optional breadcrumb paths; `nextOffset` is present when more exist." +
       READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     GetBacklinksSchema,

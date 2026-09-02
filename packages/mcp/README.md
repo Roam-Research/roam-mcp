@@ -125,8 +125,8 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 - `search_templates` - Search Roam templates by name
 - `roam_query` - Execute a Roam query (`{{query:}}` blocks, not Datalog)
 - `datalog_query` - Execute a raw Datalog query against the graph's Datomic database
-- `get_page` - Get page content as markdown
-- `get_block` - Get block content as markdown
+- `get_page` - Get page content as markdown, plus a preview of its linked references
+- `get_block` - Get block content as markdown, plus a preview of its linked references
 - `get_backlinks` - Get references to a page/block
 
 **Navigation:**

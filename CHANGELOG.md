@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased
+
+- **`get_page` / `get_block` describe the new `linkedReferences` preview.** Roam servers
+  (from the corresponding Roam release) now embed a small linked-references preview as a
+  sibling key of `markdown`: `{total, shown, results, note?}`, the first few references
+  rendered shallow, `results` items shape-identical to `get_backlinks` items, `note` only
+  when more exist. **The data itself comes from the Roam server and reaches every existing
+  client without a core release** — read tools are schema-less and core passes read results
+  through verbatim — so this release only updates the model-facing copy and the public TS
+  types. The key is absent on older Roam builds (and if the best-effort preview fails); a
+  target with no references reports an explicit `{total: 0, shown: 0, results: []}`. The
+  preview uses the flat `get_backlinks` ordering, not the app's grouped Linked References
+  view, and is never spliced into `markdown`.
+- **`get_backlinks` describes the new paging signals** `shown` (always) and, only when more
+  references exist, `note` + `nextOffset` (pass `offset: nextOffset` for the next page).
+  `shown` can be smaller than `limit` because hidden-block filtering runs after pagination,
+  which is exactly why `nextOffset` is server-computed rather than `offset + shown`.
+- `READ_FORMAT_NOTE` now documents the pre-existing `refs="N"` attribute on `<roam>` header
+  tags (N blocks reference this page/block — call `get_backlinks` with that uid). It is a raw
+  referrer count and is filtered differently from `linkedReferences.total`; the copy does not
+  equate the two.
+- Copy fixes on `get_backlinks` params: `maxDepth` said "(default: 2)" but the server default
+  is **1**; `offset` now states it is a non-negative integer (the server normalizes to
+  `max(0, floor(offset))`). No schema change — Zod still accepts what it accepted before.
+- Types: new exported `LinkedReference` and `LinkedReferencesPreview`;
+  `GetPageResponse`/`GetBlockResponse` gain optional `linkedReferences`;
+  `GetBacklinksResponse` gains optional `shown` / `note` / `nextOffset`; `BacklinkResult` is
+  now an alias of `LinkedReference` (same exported name), which corrects its `path` field —
+  declared as an object array, but the runtime value has always been `string[]`.
+
 ## 0.11.0 - 2026-08-26
 
 - **`delete_block` / `delete_page` can now report failure**: Roam servers (from the

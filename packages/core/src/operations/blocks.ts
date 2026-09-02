@@ -1,5 +1,11 @@
 import { z } from "zod";
-import type { CallToolResult, GetBlockResponse, RoamActionClient } from "../types.js";
+import type {
+  CallToolResult,
+  GetBlockResponse,
+  LinkedReference,
+  LinkedReferencesPreview,
+  RoamActionClient,
+} from "../types.js";
 import { textResult, successResult, notDeletedError, RoamError, ErrorCodes } from "../types.js";
 import { isRelativeDateWord, MM_DD_YYYY, resolveDailyNotePage } from "../relative-date.js";
 
@@ -100,7 +106,10 @@ export const MoveBlockSchema = z.object({
 export const GetBacklinksSchema = z.object({
   uid: z.string().optional().describe("UID of page or block (required if no title)"),
   title: z.string().optional().describe("Page title (required if no uid)"),
-  offset: z.coerce.number().optional().describe("Skip first N results (default: 0)"),
+  offset: z.coerce
+    .number()
+    .optional()
+    .describe("Skip first N results — a non-negative integer (default: 0)"),
   limit: z.coerce.number().optional().describe("Max results to return (default: 20)"),
   sort: z
     .enum(["created-date", "edited-date", "daily-note-date"])
@@ -118,7 +127,7 @@ export const GetBacklinksSchema = z.object({
   maxDepth: z.coerce
     .number()
     .optional()
-    .describe("Max depth of children to include in markdown (default: 2)"),
+    .describe("Max depth of children to include in markdown (default: 1)"),
 });
 
 // Types derived from schemas
@@ -131,17 +140,18 @@ export type MoveBlockParams = z.infer<typeof MoveBlockSchema>;
 export type GetBacklinksParams = z.infer<typeof GetBacklinksSchema>;
 
 // Keep response types as interfaces (not input schemas)
-export interface BacklinkResult {
-  uid: string;
-  type?: "page";
-  markdown: string;
-  path?: Array<{ uid: string; title?: string; string?: string }>;
-}
+// `BacklinkResult` keeps its historical export name (alias of the shared type)
+export type BacklinkResult = LinkedReference;
+export type { LinkedReference, LinkedReferencesPreview };
 
 export interface GetBacklinksResponse {
   queriedAt?: string;
   total: number;
+  shown?: number; // results.length; hidden filtering runs after pagination, so it can be < limit
   results: BacklinkResult[];
+  // both present iff more exist; pass `offset: nextOffset` next (never offset + shown)
+  note?: string;
+  nextOffset?: number;
 }
 
 export async function createBlock(
