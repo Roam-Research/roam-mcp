@@ -44,6 +44,12 @@ export const CreateBlockSchema = z.object({
     .union([z.coerce.number(), z.enum(["first", "last"])])
     .optional()
     .describe("Position (number, 'first', or 'last'). Defaults to 'last'"),
+  open: z
+    .boolean()
+    .optional()
+    .describe(
+      "Collapse state of the top-level blocks created from `markdown` (the ones whose uids are returned). false = created collapsed: children hidden behind the caret until expanded. Nested children and the nestUnder section block are unaffected. Default true.",
+    ),
 });
 
 export const AppendToDailyNoteSchema = z.object({
@@ -63,6 +69,12 @@ export const AppendToDailyNoteSchema = z.object({
     .optional()
     .describe(
       "Which daily note to append to: a date in MM-DD-YYYY format, or a relative day 'today'/'yesterday'/'tomorrow' (case-insensitive; resolved to the user's local calendar date). Defaults to today.",
+    ),
+  open: z
+    .boolean()
+    .optional()
+    .describe(
+      "Collapse state of the top-level blocks created from `markdown` (the ones whose uids are returned). false = created collapsed: children hidden behind the caret until expanded. Nested children and the nestUnder section block are unaffected. Default true.",
     ),
 });
 
@@ -199,9 +211,12 @@ export async function createBlock(
     location["nest-under-str"] = params.nestUnder;
   }
 
-  const response = await client.call<{ uids: string[] }>("data.block.fromMarkdown", [
-    { location, "markdown-string": params.markdown },
-  ]);
+  const args: Record<string, unknown> = { location, "markdown-string": params.markdown };
+  if (params.open !== undefined) {
+    args.open = params.open;
+  }
+
+  const response = await client.call<{ uids: string[] }>("data.block.fromMarkdown", [args]);
   return textResult(response.result ?? { uids: [] });
 }
 
@@ -222,9 +237,12 @@ export async function appendToDailyNote(
     location["nest-under-str"] = params.nestUnder;
   }
 
-  const response = await client.call<{ uids: string[] }>("data.block.fromMarkdown", [
-    { location, "markdown-string": params.markdown },
-  ]);
+  const args: Record<string, unknown> = { location, "markdown-string": params.markdown };
+  if (params.open !== undefined) {
+    args.open = params.open;
+  }
+
+  const response = await client.call<{ uids: string[] }>("data.block.fromMarkdown", [args]);
   return textResult(response.result ?? { uids: [] });
 }
 

@@ -97,8 +97,8 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 - `create-page` - Create page with markdown content
 - `update-page` - Update page title or children view type
 - `delete-page` - Delete a page (errors and exits 1 with `NOT_FOUND` when nothing exists to delete; older Roam servers may instead report success without deleting)
-- `create-block` - Create blocks (by parent UID, page title, or daily note date — MM-DD-YYYY or `today`/`yesterday`/`tomorrow`; with optional nest-under)
-- `append-to-daily-note` - Append/capture markdown to a daily note (today by default, or MM-DD-YYYY / `today`/`yesterday`/`tomorrow`; optional nest-under section)
+- `create-block` - Create blocks (by parent UID, page title, or daily note date — MM-DD-YYYY or `today`/`yesterday`/`tomorrow`; with optional nest-under; `--open false` creates them collapsed)
+- `append-to-daily-note` - Append/capture markdown to a daily note (today by default, or MM-DD-YYYY / `today`/`yesterday`/`tomorrow`; optional nest-under section; `--open false` captures collapsed)
 - `update-block` - Update block content/properties
 - `move-block` - Move a block to a new location
 - `delete-block` - Delete a block (errors and exits 1 with `NOT_FOUND` when nothing exists to delete; older Roam servers may instead report success without deleting)

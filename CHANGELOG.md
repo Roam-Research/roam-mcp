@@ -29,6 +29,13 @@
   `GetBacklinksResponse` gains optional `shown` / `note` / `nextOffset`; `BacklinkResult` is
   now an alias of `LinkedReference` (same exported name), which corrects its `path` field —
   declared as an object array, but the runtime value has always been `string[]`.
+- **`create_block` / `append_to_daily_note` accept an optional `open`.** `open: false` creates
+  the top-level blocks — exactly the ones whose uids are returned — collapsed, with their
+  children hidden behind the caret; nested children and the `nestUnder` section block are
+  unaffected, and omitting it keeps today's fully expanded behavior. Additive optional input:
+  no `outputSchema` change and no echo in the response. A Roam server without the
+  corresponding release drops the key and creates the blocks open — a silent no-op, never an
+  error.
 
 ## 0.11.0 - 2026-08-26
 
