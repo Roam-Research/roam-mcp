@@ -85,7 +85,7 @@ class RoamError extends Error {
 
 ### 2c. `ErrorCodes` — a recommended vocabulary, not a hard contract
 
-`ErrorCodes` (27 members today) exists for IDE autocomplete and cross-package consistency. Since the `RoamError.code` type is `ErrorCode | (string & {})`, **any string is a valid code at runtime** — a transport may emit codes core has never heard of. Two consequences:
+`ErrorCodes` (28 members today) exists for IDE autocomplete and cross-package consistency. Since the `RoamError.code` type is `ErrorCode | (string & {})`, **any string is a valid code at runtime** — a transport may emit codes core has never heard of. Two consequences:
 
 - Core must **never validate** an incoming code against the `ErrorCodes` enum.
 - **Adding** a member is additive/safe; **removing or renaming** one is a breaking change (TS consumers narrow on the literals — e.g. `mcp` on `CONFIG_TOO_NEW`, `cli` on `GRAPH_NOT_SELECTED`).
@@ -175,7 +175,7 @@ The hosted MCP server lives in a separate, private repo and is **not** in this t
 - Injects its **own** `resolveGraph` (backed by its own grant store, not `~/.roam-tools.json`) and its **own** client (its own auth, not a local token).
 - Passes `tokenInfoMode: "skip"` and does **not** implement `getTokenInfo` — so the `get_graph_guidelines` side flow never fires.
 - Authors its **own** `list_graphs` / `setup_new_graph` standalone tools and registers them directly with the MCP SDK. (They can't go through `routeToolCall`, which throws on standalone tools.)
-- Pins core at an **exact version** (`"0.10.0"`, since 2026-08-14) — no range. It previously used a caret on a chosen minor (`^0.7.0` → `^0.8.0`); that was replaced precisely because a patch may change model-facing copy, so every upgrade must be an explicit, reviewable `package.json` diff rather than something a lockfile refresh can pull in.
+- Pins core at an **exact version** (`"0.11.0"` since 2026-08-26; exact pins since 2026-08-14) — no range. It previously used a caret on a chosen minor (`^0.7.0` → `^0.8.0`); that was replaced precisely because a patch may change model-facing copy, so every upgrade must be an explicit, reviewable `package.json` diff rather than something a lockfile refresh can pull in.
 
 That pin is the crux of §6: **nothing we publish reaches the hosted server on its own** — not a patch, not a minor. Each upgrade is a deliberate edit on their side.
 
@@ -201,7 +201,7 @@ Real, intentional differences. Keep them in mind when reasoning about behavior o
 
 ## 6. How to change this repo without breaking the remote MCP
 
-**The load-bearing fact:** the hosted consumer pins core at an **exact version** (`"0.10.0"` since 2026-08-14 — see §4). So **nothing we publish reaches it automatically.** Every upgrade is an explicit `package.json` edit on their side, reviewed as a diff, and immune even to a lockfile regeneration.
+**The load-bearing fact:** the hosted consumer pins core at an **exact version** (`"0.11.0"` since 2026-08-26; exact pins since 2026-08-14 — see §4). So **nothing we publish reaches it automatically.** Every upgrade is an explicit `package.json` edit on their side, reviewed as a diff, and immune even to a lockfile regeneration.
 
 Two consequences. We **cannot ship hosted agents a fix or a fact by publishing alone** — reaching them always takes their deliberate bump plus a redeploy, so plan cross-repo changes as two events, not one. And SemVer discipline on `core` is no longer their guardrail: it still matters, because it signals intent to whoever reviews that diff and other consumers may use ranges, but the minor boundary is now a communication device rather than a safety mechanism.
 
@@ -236,7 +236,7 @@ Their side hard-codes facts about core beyond the version. These don't block a p
 
 - **SHA-256 fingerprints of both blob texts**, checked as part of their deploy verification. Any edit to `ROAM_SYNTAX` or `ROAM_SYNTAX_APPEND_ONLY` — including a whitespace-only one — invalidates them. (Both texts are currently frozen pending an eval; this is the cost of unfreezing.)
 - **`EXPECTED_API_VERSION` as a string literal** in a test fixture, behind a `yarn test` predeploy gate. The checklist above only forbids changing its major.minor in a patch; note that _any_ change to it, patch included, lands in their gate.
-- **The 20 `dataTools` names, exact and hand-written** (deliberately not derived from core, so the pin isn't tautological). Adding, removing, or renaming a data tool means editing their fixture. `packages/core/test/hosted-surface.test.ts` is the mirror of this on our side.
+- **The `dataTools` names, exact and hand-written** (18 in their fixture until the pin bump that follows this train's publish; 20 after) (deliberately not derived from core, so the pin isn't tautological). Adding, removing, or renaming a data tool means editing their fixture. `packages/core/test/hosted-surface.test.ts` is the mirror of this on our side.
 
 ### Before shipping a `core` change
 

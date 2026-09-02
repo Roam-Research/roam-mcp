@@ -20,8 +20,8 @@
   hidden-block filtering runs after pagination, which is exactly why `nextOffset` is
   server-computed rather than `offset + shown`.
 - **`get_backlinks` tie order changes** on the corresponding Roam release: referrers that share
-  a timestamp now order by entity id (deterministic per runtime; `desc` puts the newer one
-  first) instead of by incidental input order. The same change reaches the app's flat Linked
+  a timestamp now order by entity id (deterministic per runtime; `desc` puts the higher entity
+  id first) instead of by incidental input order. The same change reaches the app's flat Linked
   References view and `roam_query`.
 - `READ_FORMAT_NOTE` now documents the pre-existing `refs="N"` attribute on `<roam>` header
   tags (N blocks reference this page/block — call `get_backlinks` with that uid). It is a raw
