@@ -4,16 +4,18 @@
 
 - **`get_page` / `get_block` describe the new `linkedReferences` preview.** Roam servers
   (from the corresponding Roam release) now embed a small linked-references preview as a
-  sibling key of `markdown`: `{total, shown, results, note?}`, the first few references
-  rendered shallow, `results` items shape-identical to `get_backlinks` items, `note` only
-  when more exist. **The data itself comes from the Roam server and reaches every existing
-  client without a core release** — read tools are schema-less and core passes read results
-  through verbatim — so this release only updates the model-facing copy and the public TS
-  types. The key is absent on older Roam builds (and if the best-effort preview fails); a
-  target with no `:block/_refs` referrers reports an explicit `{total: 0, shown: 0, results: []}`
-  (that gate skips the pipeline, so a target referenced only by diagram nodes reports 0 there
-  while `get_backlinks` still lists them). The preview uses the flat `get_backlinks` ordering,
-  not the app's grouped Linked References view, and is never spliced into `markdown`.
+  sibling key of `markdown`: `{total, shown, results, note?}` — up to 5 of the most recent
+  references in APPROXIMATE order (a bounded scan of the refs index by entity id, which
+  correlates with recency, instead of pulling and sorting every referrer — flat cost on hub
+  pages), rendered shallow, `results` items shape-identical to `get_backlinks` items, `total`
+  the raw referrer count (hidden and rootless included), `note` when more exist. It is a
+  preview: `get_backlinks` is the exact, sortable, pageable list. **The data itself comes from
+  the Roam server and reaches every existing client without a core release** — read tools are
+  schema-less and core passes read results through verbatim — so this release only updates the
+  model-facing copy and the public TS types. The key is absent on older Roam builds (and if the
+  best-effort preview fails); a target with no referrer of either kind (textual or diagram-node)
+  reports an explicit `{total: 0, shown: 0, results: []}`. The preview is flat, not the app's
+  grouped Linked References view, and is never spliced into `markdown`.
 - **`get_backlinks` describes the new paging signals** `shown` (always) and, only when a
   non-empty result window was consumed and more remain, `note` + `nextOffset` (pass `offset: nextOffset`
   for the next page; a `limit` of 0 emits neither). `shown` can be smaller than `limit` because
@@ -25,8 +27,8 @@
   References view and `roam_query`.
 - `READ_FORMAT_NOTE` now documents the pre-existing `refs="N"` attribute on `<roam>` header
   tags (N blocks reference this page/block — call `get_backlinks` with that uid). It is a raw
-  referrer count and is filtered differently from `linkedReferences.total`; the copy does not
-  equate the two.
+  referrer count of textual references; `linkedReferences.total` is the same count plus
+  diagram-node referrers — the copy does not equate the two.
 - Copy fixes on `get_backlinks` params: `maxDepth` said "(default: 2)" but the server default
   is **1**; `offset` now states it is a non-negative integer (the server normalizes to
   `max(0, floor(offset))`). No schema change — Zod still accepts what it accepted before.

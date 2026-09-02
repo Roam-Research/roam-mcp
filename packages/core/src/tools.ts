@@ -342,8 +342,8 @@ const UidOutput = z
 const UidsOutput = z
   .object({ uids: z.array(z.string()).optional(), graph: z.string().optional() })
   .passthrough();
-// batch writes: `results` is positionally aligned with the input; `deleted`/`reason` stay
-// server-owned and untyped like DeleteOutput's `deleted`
+// batch writes: `results` is positionally aligned with the input; `note`/`deleted`/`reason` stay
+// server-owned and untyped like DeleteOutput's `deleted` (core interprets none of them)
 const BatchOutput = z
   .object({
     success: z.boolean().optional(),
@@ -358,7 +358,7 @@ const BatchOutput = z
             ok: z.boolean().optional(),
             code: z.string().optional(),
             message: z.string().optional(),
-            note: z.string().optional(),
+            note: z.unknown(),
             deleted: z.unknown(),
             reason: z.unknown(),
           })
@@ -514,7 +514,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_page",
-    "Get a page's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large pages. The result also carries `linkedReferences`: up to 5 references to this page (newest-created first, flat) with `total` and `shown` counts." +
+    "Get a page's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large pages. The result also carries `linkedReferences`: up to 5 recent references to this page, with `total` and `shown` counts." +
       READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     GetPageSchema,
@@ -523,7 +523,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_block",
-    "Get a block's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large blocks. The result also carries `linkedReferences`: up to 5 references to this block (newest-created first, flat) with `total` and `shown` counts." +
+    "Get a block's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large blocks. The result also carries `linkedReferences`: up to 5 recent references to this block, with `total` and `shown` counts." +
       READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     GetBlockSchema,
