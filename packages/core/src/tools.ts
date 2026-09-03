@@ -514,7 +514,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_page",
-    "Get a page's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large pages. The result also carries `linkedReferences`: up to 5 recent references to this page, with `total` and `shown` counts." +
+    "Get a page's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large pages. The result also carries `linkedReferences`: up to 5 recent references to this page." +
       READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     GetPageSchema,
@@ -523,7 +523,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_block",
-    "Get a block's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large blocks. The result also carries `linkedReferences`: up to 5 recent references to this block, with `total` and `shown` counts." +
+    "Get a block's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large blocks. The result also carries `linkedReferences`: up to 5 recent references to this block." +
       READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     GetBlockSchema,
