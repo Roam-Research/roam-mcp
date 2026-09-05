@@ -37,7 +37,7 @@ describe("tool annotations — representative tools per category", () => {
   });
 
   it("edits and moves are destructive (overwrite/relocate) but idempotent", () => {
-    for (const name of ["update_block", "update_page", "move_block"]) {
+    for (const name of ["update_block", "update_blocks", "update_page", "move_block"]) {
       const a = annotationsFor(name);
       expect(a?.readOnlyHint, name).toBe(false);
       expect(a?.destructiveHint, name).toBe(true);
@@ -46,7 +46,7 @@ describe("tool annotations — representative tools per category", () => {
   });
 
   it("deletes are destructive and non-idempotent", () => {
-    for (const name of ["delete_block", "delete_page", "file_delete"]) {
+    for (const name of ["delete_block", "delete_blocks", "delete_page", "file_delete"]) {
       const a = annotationsFor(name);
       expect(a?.destructiveHint, name).toBe(true);
       expect(a?.idempotentHint, name).toBe(false);

@@ -97,11 +97,13 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 - `create-page` - Create page with markdown content
 - `update-page` - Update page title or children view type
 - `delete-page` - Delete a page (errors and exits 1 with `NOT_FOUND` when nothing exists to delete; older Roam servers may instead report success without deleting)
-- `create-block` - Create blocks (by parent UID, page title, or daily note date — MM-DD-YYYY or `today`/`yesterday`/`tomorrow`; with optional nest-under)
-- `append-to-daily-note` - Append/capture markdown to a daily note (today by default, or MM-DD-YYYY / `today`/`yesterday`/`tomorrow`; optional nest-under section)
+- `create-block` - Create blocks (by parent UID, page title, or daily note date — MM-DD-YYYY or `today`/`yesterday`/`tomorrow`; with optional nest-under; `--open false` creates them collapsed)
+- `append-to-daily-note` - Append/capture markdown to a daily note (today by default, or MM-DD-YYYY / `today`/`yesterday`/`tomorrow`; optional nest-under section; `--open false` captures collapsed)
 - `update-block` - Update block content/properties
+- `update-blocks` - Update up to 25 blocks in one call, `--updates '[{"uid":"…","string":"…"}]'` (per-item `results` report; some items can fail while others succeed)
 - `move-block` - Move a block to a new location
 - `delete-block` - Delete a block (errors and exits 1 with `NOT_FOUND` when nothing exists to delete; older Roam servers may instead report success without deleting)
+- `delete-blocks` - Delete up to 25 blocks and their descendants in one call, `--uids '["…","…"]'` (per-item `results` report; deleting an ancestor also deletes listed descendants)
 - `add-comment` - Add a comment to a block (comment thread, not child block)
 - `get-comments` - Get comments on a block with author/date context
 
@@ -113,8 +115,8 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 - `search-templates` - Search Roam templates by name
 - `roam-query` - Execute a Roam query (`{{query:}}` blocks, not Datalog)
 - `datalog-query` - Execute a raw Datalog query against the graph's Datomic database
-- `get-page` - Get page content as markdown
-- `get-block` - Get block content as markdown
+- `get-page` - Get page content as markdown, plus a preview of its linked references
+- `get-block` - Get block content as markdown, plus a preview of its linked references
 - `get-backlinks` - Get references to a page/block
 
 **Navigation:**

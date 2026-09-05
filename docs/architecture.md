@@ -85,7 +85,7 @@ class RoamError extends Error {
 
 ### 2c. `ErrorCodes` — a recommended vocabulary, not a hard contract
 
-`ErrorCodes` (27 members today) exists for IDE autocomplete and cross-package consistency. Since the `RoamError.code` type is `ErrorCode | (string & {})`, **any string is a valid code at runtime** — a transport may emit codes core has never heard of. Two consequences:
+`ErrorCodes` (28 members today) exists for IDE autocomplete and cross-package consistency. Since the `RoamError.code` type is `ErrorCode | (string & {})`, **any string is a valid code at runtime** — a transport may emit codes core has never heard of. Two consequences:
 
 - Core must **never validate** an incoming code against the `ErrorCodes` enum.
 - **Adding** a member is additive/safe; **removing or renaming** one is a breaking change (TS consumers narrow on the literals — e.g. `mcp` on `CONFIG_TOO_NEW`, `cli` on `GRAPH_NOT_SELECTED`).
@@ -94,12 +94,12 @@ class RoamError extends Error {
 
 | Export                                           | Contents                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dataTools`                                      | 18 graph-content tools — **transport-neutral** (they only call `client.call(...)`). This is what a hosted consumer registers.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `dataTools`                                      | 20 graph-content tools — **transport-neutral** (they only call `client.call(...)`). This is what a hosted consumer registers.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `desktopUiTools`                                 | 13 tools the hosted MCP omits. Seven assume a local Desktop / filesystem (`get_open_windows`, `get_selection`, `open_main_window`, `open_sidebar`, `file_get`, `file_upload`, `file_delete`). Four are renderer-only Local API actions with no hosted-backend counterpart (`semantic_search`, `suggest_links`, `reload_dev_extensions`, `call_extension_tool` — the last invokes AI tools extensions register in the running app, which the hosted backend's peer replica has no channel to). `add_shortcut` / `remove_shortcut` are graph-data tools (transport-neutral `client.call`) parked here to stay **local-only** until the hosted backend is confirmed to expose `data.page.addShortcut`/`removeShortcut` — then move them to `dataTools`. |
 | `contentTools` / `tools`                         | `[...dataTools, ...desktopUiTools]`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `findTool`, `defineTool`, `defineStandaloneTool` | registry helpers. `defineTool` runs `withGraph` to add the optional `graph` param to every client tool.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
-A tool definition may also carry an optional `outputSchema` (declared on the 9 write tools only — see §2e for the `structuredContent` contract).
+A tool definition may also carry an optional `outputSchema` (declared on the 11 write tools only — see §2e for the `structuredContent` contract).
 
 `withGraph`'s `graph` param description is intentionally transport-neutral: _"Graph to act on, by nickname or name. Optional — if only one graph is available, it is used automatically."_ — it must not assume local-only concepts.
 
@@ -107,13 +107,13 @@ A tool definition may also carry an optional `outputSchema` (declared on the 9 w
 
 - `EXPECTED_API_VERSION` (`"1.1.5"`) — sent on every backend call; the backend compares **major.minor** exactly (patch ignored). Consumers read it from core, never hardcode.
 - `CONFIG_VERSION` (`1`).
-- **Output schemas & `structuredContent` (write-only).** Tool definitions carry an optional `outputSchema` (a Zod object), declared on the **9 write tools only** — the 9 reads are content-only. `textResult(value)` attaches `value` as `structuredContent` for any plain object; `stripUndeclaredStructuredContent(result, tool)` drops it again when the tool has **no** `outputSchema`. The wire invariant is therefore **`structuredContent` is present iff the tool declares an `outputSchema`** — and **every transport must apply the strip-gate** (the SDK validates `structuredContent` against the schema on success and throws if a schema-bearing tool returns none). Schemas are `.passthrough()` + all-optional; keep changes to a _declared_ write field **additive** (clients such as ChatGPT validate live responses against a ~1-day-stale cached `tools/list` schema, so a non-additive change can break a tool for ~a day — use a new tool name or expand-contract). Reads are deliberately schema-less: a schema would double the payload (`textResult` already serializes the whole result into the text channel) and read shapes still evolve.
+- **Output schemas & `structuredContent` (write-only).** Tool definitions carry an optional `outputSchema` (a Zod object), declared on the **11 write tools only** — the 9 reads are content-only. `textResult(value)` attaches `value` as `structuredContent` for any plain object; `stripUndeclaredStructuredContent(result, tool)` drops it again when the tool has **no** `outputSchema`. The wire invariant is therefore **`structuredContent` is present iff the tool declares an `outputSchema`** — and **every transport must apply the strip-gate** (the SDK validates `structuredContent` against the schema on success and throws if a schema-bearing tool returns none). Schemas are `.passthrough()` + all-optional; keep changes to a _declared_ write field **additive** (clients such as ChatGPT validate live responses against a ~1-day-stale cached `tools/list` schema, so a non-additive change can break a tool for ~a day — use a new tool name or expand-contract). Reads are deliberately schema-less: a schema would double the payload (`textResult` already serializes the whole result into the text channel) and read shapes still evolve.
 - **Write results are passthrough since 0.11.** The nine synthesized-success write/UI
   tools — `update_block`, `delete_block`, `move_block`, `update_page`, `delete_page`,
   `add_shortcut`, `remove_shortcut`, `open_main_window`, `open_sidebar` (ten call sites;
   `open_main_window` has two) — now pass the Roam server's `result` through, merged under
   `success: true` (`successResult`; null/non-object → the old synthesized shape). NB this
-  nine is NOT the nine schema-bearing write tools above (only five overlap): the four
+  nine is NOT the eleven schema-bearing write tools above (only five overlap): the four
   desktop-UI members are schema-less, so their passthrough reaches the text channel only —
   `stripUndeclaredStructuredContent` drops their `structuredContent`. Two consequences:
   whatever a Roam write handler returns in `result` is **agent-facing API** from the
@@ -126,7 +126,12 @@ A tool definition may also carry an optional `outputSchema` (declared on the 9 w
   must report successful outcomes through operation-specific fields such as `deleted`.
   Failed operations must use the transport's error-response path — returning
   `{success: false}` or an `error` field inside a successful `result` would be exposed as a
-  success instead.
+  success instead. **The two batch writes (`update_blocks` / `delete_blocks`) are the
+  deliberate exception**: `successResult` would stamp a mixed batch successful, so they
+  build their result explicitly and derive `success`/`succeeded`/`failed` from the server's
+  per-item `results` report — validated fail-closed first (array, input length, per-position
+  uid, boolean `ok`), never synthesized. ≥1 succeeding item stays `isError: false`; 0
+  successes throw the shared per-item code, or `BATCH_FAILED` when they differ.
 - `withGraphField` carries the resolved graph identity as a structured `graph` field — injected into `structuredContent` (write tools) and into the result's JSON text body when it parses as an object (content-only reads) — instead of a `"Roam graph: …"` text prefix. **Since 0.8.0** the value is the identifier the caller passed in the `graph` arg (echoed; nickname or name), falling back to the canonical graph name when no `graph` arg was passed; it still overwrites any `graph` key the backend returned, so a backend cannot spoof it. (Before 0.8.0 it was always the canonical name.) `GUIDELINES_NOTE` is appended to client-tool descriptions to nudge `get_graph_guidelines`.
 
 ### 2f. Client conventions & the error envelope
@@ -170,7 +175,7 @@ The hosted MCP server lives in a separate, private repo and is **not** in this t
 - Injects its **own** `resolveGraph` (backed by its own grant store, not `~/.roam-tools.json`) and its **own** client (its own auth, not a local token).
 - Passes `tokenInfoMode: "skip"` and does **not** implement `getTokenInfo` — so the `get_graph_guidelines` side flow never fires.
 - Authors its **own** `list_graphs` / `setup_new_graph` standalone tools and registers them directly with the MCP SDK. (They can't go through `routeToolCall`, which throws on standalone tools.)
-- Pins core at an **exact version** (`"0.10.0"`, since 2026-08-14) — no range. It previously used a caret on a chosen minor (`^0.7.0` → `^0.8.0`); that was replaced precisely because a patch may change model-facing copy, so every upgrade must be an explicit, reviewable `package.json` diff rather than something a lockfile refresh can pull in.
+- Pins core at an **exact version** (`"0.11.0"` since 2026-08-26; exact pins since 2026-08-14) — no range. It previously used a caret on a chosen minor (`^0.7.0` → `^0.8.0`); that was replaced precisely because a patch may change model-facing copy, so every upgrade must be an explicit, reviewable `package.json` diff rather than something a lockfile refresh can pull in.
 
 That pin is the crux of §6: **nothing we publish reaches the hosted server on its own** — not a patch, not a minor. Each upgrade is a deliberate edit on their side.
 
@@ -196,7 +201,7 @@ Real, intentional differences. Keep them in mind when reasoning about behavior o
 
 ## 6. How to change this repo without breaking the remote MCP
 
-**The load-bearing fact:** the hosted consumer pins core at an **exact version** (`"0.10.0"` since 2026-08-14 — see §4). So **nothing we publish reaches it automatically.** Every upgrade is an explicit `package.json` edit on their side, reviewed as a diff, and immune even to a lockfile regeneration.
+**The load-bearing fact:** the hosted consumer pins core at an **exact version** (`"0.11.0"` since 2026-08-26; exact pins since 2026-08-14 — see §4). So **nothing we publish reaches it automatically.** Every upgrade is an explicit `package.json` edit on their side, reviewed as a diff, and immune even to a lockfile regeneration.
 
 Two consequences. We **cannot ship hosted agents a fix or a fact by publishing alone** — reaching them always takes their deliberate bump plus a redeploy, so plan cross-repo changes as two events, not one. And SemVer discipline on `core` is no longer their guardrail: it still matters, because it signals intent to whoever reviews that diff and other consumers may use ranges, but the minor boundary is now a communication device rather than a safety mechanism.
 
@@ -221,6 +226,8 @@ Two consequences. We **cannot ship hosted agents a fix or a fact by publishing a
 - Makes `withGraph`'s `graph` param required, or re-bakes a local assumption into its description.
 - Imports a local-only dependency (`fs`, `@inquirer/prompts`, `RoamClient`, the config reader) into `core` — this defeats the whole split and would break the hosted bundle.
 - Changes `EXPECTED_API_VERSION`'s major.minor — that's a real wire-compatibility change with the backend, not a cosmetic bump.
+  - It is a **wire-compatibility** signal only (major.minor exact, patch ignored), never a **capability** signal — and the hosted transport doesn't check it at all — so bumping it can never advertise a new action. The July 2026 `1.2.0` attempt broke every pairing and was reverted.
+  - Feature-detect an additive action **by failure** instead: catch `UNKNOWN_ACTION` (local) / `ACTION_NOT_AVAILABLE` (hosted) and rewrite it to tool-specific advice, keeping the transport's own code. Precedents: `callExtensionTool` in `packages/core/src/operations/extensions.ts`, and `runBatch` (`update_blocks` / `delete_blocks`) in `packages/core/src/operations/blocks.ts`.
 - Introduces a caret/tilde dep range in `mcp`'s or `cli`'s `package.json` for a sibling `@roam-research/*` package — `bump-version.mjs` writes **exact** pins on purpose (see the exact sibling-pin invariant in `CLAUDE.md`).
 
 ### What the hosted consumer pins about us
@@ -229,7 +236,7 @@ Their side hard-codes facts about core beyond the version. These don't block a p
 
 - **SHA-256 fingerprints of both blob texts**, checked as part of their deploy verification. Any edit to `ROAM_SYNTAX` or `ROAM_SYNTAX_APPEND_ONLY` — including a whitespace-only one — invalidates them. (Both texts are currently frozen pending an eval; this is the cost of unfreezing.)
 - **`EXPECTED_API_VERSION` as a string literal** in a test fixture, behind a `yarn test` predeploy gate. The checklist above only forbids changing its major.minor in a patch; note that _any_ change to it, patch included, lands in their gate.
-- **The 18 `dataTools` names, exact and hand-written** (deliberately not derived from core, so the pin isn't tautological). Adding, removing, or renaming a data tool means editing their fixture. `packages/core/test/hosted-surface.test.ts` is the mirror of this on our side.
+- **The `dataTools` names, exact and hand-written** (18 in their fixture until the pin bump that follows this train's publish; 20 after) (deliberately not derived from core, so the pin isn't tautological). Adding, removing, or renaming a data tool means editing their fixture. `packages/core/test/hosted-surface.test.ts` is the mirror of this on our side.
 
 ### Before shipping a `core` change
 

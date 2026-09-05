@@ -158,11 +158,13 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 - `create_page` - Create page with markdown content
 - `update_page` - Update page title or children view type
 - `delete_page` - Delete a page (errors with `NOT_FOUND` when nothing exists to delete; older Roam servers may instead report success without deleting)
-- `create_block` - Create blocks (by parent UID, page title, or daily note date — MM-DD-YYYY or `today`/`yesterday`/`tomorrow`; with optional nest-under)
-- `append_to_daily_note` - Append/capture markdown to a daily note (today by default, or MM-DD-YYYY / `today`/`yesterday`/`tomorrow`; optional nest-under section)
+- `create_block` - Create blocks (by parent UID, page title, or daily note date — MM-DD-YYYY or `today`/`yesterday`/`tomorrow`; with optional nest-under; `open: false` creates them collapsed)
+- `append_to_daily_note` - Append/capture markdown to a daily note (today by default, or MM-DD-YYYY / `today`/`yesterday`/`tomorrow`; optional nest-under section; `open: false` captures collapsed)
 - `update_block` - Update block content/properties
+- `update_blocks` - Update up to 25 blocks in one call (per-item `results` report; some items can fail while others succeed)
 - `move_block` - Move a block to a new location
 - `delete_block` - Delete a block (errors with `NOT_FOUND` when nothing exists to delete; older Roam servers may instead report success without deleting)
+- `delete_blocks` - Delete up to 25 blocks and their descendants in one call (per-item `results` report; deleting an ancestor also deletes listed descendants)
 - `add_comment` - Add a comment to a block (comment thread, not child block)
 - `get_comments` - Get comments on a block with author/date context
 
@@ -174,8 +176,8 @@ Graph guidelines let you store preferences and context directly in your Roam gra
 - `search_templates` - Search Roam templates by name
 - `roam_query` - Execute a Roam query (`{{query:}}` blocks, not Datalog)
 - `datalog_query` - Execute a raw Datalog query against the graph's Datomic database
-- `get_page` - Get page content as markdown
-- `get_block` - Get block content as markdown
+- `get_page` - Get page content as markdown, plus a preview of its linked references
+- `get_block` - Get block content as markdown, plus a preview of its linked references
 - `get_backlinks` - Get references to a page/block
 
 **Navigation:**

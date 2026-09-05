@@ -165,6 +165,9 @@ export const ErrorCodes = {
   // notDeletedError). Distinct from TOKEN_NOT_FOUND (auth). Unlike the rest of this block,
   // no transport emits it with a status — core synthesizes it from a 200 success response.
   NOT_FOUND: "NOT_FOUND",
+  // Core-synthesized when every item in a batch write failed with MIXED per-item codes
+  // (a batch whose items share one code surfaces that code instead). No transport emits it.
+  BATCH_FAILED: "BATCH_FAILED",
 
   // 401 errors
   MISSING_TOKEN: "MISSING_TOKEN",
@@ -428,10 +431,29 @@ export interface SearchTemplatesResponse {
   results: Template[];
 }
 
+// Shared item shape: get_backlinks results and the getPage/getBlock `linkedReferences` preview
+export interface LinkedReference {
+  uid: string;
+  type?: "page"; // Only present for page results
+  markdown: string;
+  path?: string[]; // breadcrumb path as markdown strings (vector via ai-md/block-path-markdown)
+}
+
+// An approximate preview (up to 5 referrers, newest entity ids first — not get_backlinks' first
+// page): `total` is the raw referrer count (hidden and rootless included, so it can exceed
+// get_backlinks' total), `shown` = results.length, `note` when the raw count exceeds 5
+export interface LinkedReferencesPreview {
+  total: number;
+  shown: number;
+  results: LinkedReference[];
+  note?: string;
+}
+
 // getPage response
 export interface GetPageResponse {
   uid: string;
   markdown: string;
+  linkedReferences?: LinkedReferencesPreview; // absent on older servers / preview failure
   queriedAt: string;
 }
 
@@ -440,6 +462,7 @@ export interface GetBlockResponse {
   uid: string;
   markdown: string;
   path: string[]; // breadcrumb path as markdown strings (vector via ai-md/block-path-markdown)
+  linkedReferences?: LinkedReferencesPreview; // absent on older servers / preview failure
   queriedAt: string;
 }
 

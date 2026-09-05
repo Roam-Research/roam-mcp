@@ -206,7 +206,13 @@ export class RoamClient {
 
     // 404 - Unknown action
     if (status === 404) {
-      throw new RoamError(`Unknown API action: ${message}`, ErrorCodes.UNKNOWN_ACTION);
+      // Roam stamps apiVersion on every response, errors included — carry it so callers
+      // feature-detecting a missing action can name the build the user is running.
+      throw new RoamError(
+        `Unknown API action: ${message}`,
+        ErrorCodes.UNKNOWN_ACTION,
+        typeof response.apiVersion === "string" ? { apiVersion: response.apiVersion } : undefined,
+      );
     }
 
     // 500 - Server errors

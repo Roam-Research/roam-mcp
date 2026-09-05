@@ -1,5 +1,78 @@
 # Changelog
 
+## 0.12.0 - 2026-09-02
+
+- **`get_page` / `get_block` describe the new `linkedReferences` preview.** Roam servers
+  (from the corresponding Roam release) now embed a small linked-references preview as a
+  sibling key of `markdown`: `{total, shown, results, note?}` — up to 5 recent references
+  selected and ordered APPROXIMATELY (a bounded scan of the refs index by entity id, which
+  correlates with recency, instead of pulling and sorting every referrer — bounded cost on hub
+  pages), rendered shallow, `results` items shape-identical to `get_backlinks` items, `total`
+  the raw referrer count (hidden and rootless included, so it can exceed `get_backlinks`'
+  total), `note` when that raw count exceeds 5. It is a preview, not `get_backlinks`' first
+  page: `get_backlinks` (from offset 0) is the exact, sortable, pageable list. **The data itself comes from
+  the Roam server and reaches every existing client without a core release** — read tools are
+  schema-less and core passes read results through verbatim — so this release only updates the
+  model-facing copy and the public TS types. The key is absent on older Roam builds (and if the
+  best-effort preview fails); a target with no referrer of either kind (textual or diagram-node)
+  reports an explicit `{total: 0, shown: 0, results: []}`. The preview is flat, not the app's
+  grouped Linked References view, and is never spliced into `markdown`.
+- **`get_backlinks` describes the new paging signals** `shown` (always) and, only when a
+  non-empty result window was consumed and more remain, `note` + `nextOffset` (pass `offset: nextOffset`
+  for the next page; a `limit` of 0 emits neither). `shown` can be smaller than `limit` because
+  hidden-block filtering runs after pagination, which is exactly why `nextOffset` is
+  server-computed rather than `offset + shown`.
+- **`get_backlinks` tie order changes** on the corresponding Roam release: referrers that share
+  a timestamp now order by entity id (deterministic per runtime; `desc` puts the higher entity
+  id first) instead of by incidental input order. The same change reaches the app's flat Linked
+  References view and `roam_query`.
+- `READ_FORMAT_NOTE` now documents the pre-existing `refs="N"` attribute on `<roam>` header
+  tags (N blocks reference this page/block — call `get_backlinks` with that uid). It is a raw
+  referrer count of textual references; `linkedReferences.total` is the same count plus
+  diagram-node referrers — the copy does not equate the two.
+- Copy fixes on `get_backlinks` params: `maxDepth` said "(default: 2)" but the server default
+  is **1**; `offset` now states it is a non-negative integer (the server normalizes to
+  `max(0, floor(offset))`). No schema change — Zod still accepts what it accepted before.
+- Types: new exported `LinkedReference` and `LinkedReferencesPreview`;
+  `GetPageResponse`/`GetBlockResponse` gain optional `linkedReferences`;
+  `GetBacklinksResponse` gains optional `shown` / `note` / `nextOffset`; `BacklinkResult` is
+  now an alias of `LinkedReference` (same exported name), which corrects its `path` field —
+  declared as an object array, but the runtime value has always been `string[]`.
+- **`create_block` / `append_to_daily_note` accept an optional `open`.** `open: false` creates
+  the top-level blocks — exactly the ones whose uids are returned — collapsed, with their
+  children hidden behind the caret; nested children and the `nestUnder` section block are
+  unaffected, and omitting it keeps today's fully expanded behavior. Additive optional input:
+  no `outputSchema` change and no echo in the response. A Roam server without the
+  corresponding release drops the key and creates the blocks open — a silent no-op, never an
+  error.
+- **New `update_blocks` / `delete_blocks` tools** (`dataTools` 18 → 20; schema-bearing write
+  tools 9 → 11). 1–25 items, one round trip, backed by the new `data.block.updateBlocks` /
+  `data.block.deleteBlocks` actions. `update_blocks` items are exactly `update_block`'s fields
+  (shared `BlockUpdateFields` schema, so single and batch can't drift); `delete_blocks` takes
+  `uids`. A uid repeated in `updates` fails the whole call server-side (`VALIDATION_ERROR` on the
+  hosted server; the local API reports it as a 500 like its other validation errors); repeated
+  `delete_blocks` uids are tolerated. **Per-item report contract:** the server emits facts — `results`, positionally
+  aligned with the input, each item `{uid, ok}` plus `deleted`/`reason`/`note`/`code`/
+  `message` — and core derives `success`/`succeeded`/`failed` from it, ignoring any server
+  aggregate, after validating it fail-closed (array, input length, per-position uid, boolean
+  `ok`; a violation is an `INTERNAL_ERROR` carrying the raw payload — outcomes are never
+  synthesized). ≥1 succeeding item ⇒ `isError: false` with the report as
+  `structuredContent`; 0 successes ⇒ an error carrying the report in its context, using the
+  shared per-item code (all-missing deletes map to the same core-synthesized `NOT_FOUND` a
+  single delete gets) or the **new `ErrorCodes.BATCH_FAILED`** when the codes differ
+  (additive enum member). Against a Roam build without the actions, both degrade to a
+  "use update_block / delete_block one at a time, or update Roam" message under the
+  transport's own `UNKNOWN_ACTION` / `ACTION_NOT_AVAILABLE` code, naming the build's API
+  version when the transport reported one. **Hosted-consumer note:** the two new names are a
+  required edit in their `hosted-tool-names` fixture, and the hosted MCP only exposes the
+  tools once it bumps its exact `core` pin and its backend serves the two actions.
+- The local transport's 404 `UNKNOWN_ACTION` now carries the Roam build's `apiVersion` in the
+  `RoamError` context (Roam stamps it on error responses too; the message is unchanged), so
+  the degradation copy above can name the build the user is running.
+- Docs: `docs/architecture.md` §6 records that `EXPECTED_API_VERSION` is a wire-compatibility
+  signal, never a capability one — additive actions are feature-detected by catching
+  `UNKNOWN_ACTION` / `ACTION_NOT_AVAILABLE`, never by bumping its major.minor.
+
 ## 0.11.0 - 2026-08-26
 
 - **`delete_block` / `delete_page` can now report failure**: Roam servers (from the

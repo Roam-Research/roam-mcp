@@ -26,7 +26,9 @@ import {
   AppendToDailyNoteSchema,
   GetBlockSchema,
   UpdateBlockSchema,
+  UpdateBlocksSchema,
   DeleteBlockSchema,
+  DeleteBlocksSchema,
   MoveBlockSchema,
   GetBacklinksSchema,
   AddCommentSchema,
@@ -35,7 +37,9 @@ import {
   appendToDailyNote,
   getBlock,
   updateBlock,
+  updateBlocks,
   deleteBlock,
+  deleteBlocks,
   moveBlock,
   getBacklinks,
   addComment,
@@ -191,7 +195,7 @@ const GUIDELINES_NOTE =
 // still fires (getDataTools) — hence this note must NOT name get_graph_guidelines,
 // which is the substring that marks a strippable nudge.
 const READ_FORMAT_NOTE =
-  '\n\nReturns Roam agent markdown (full syntax in this graph\'s guidelines `roamSyntax`). Each block ends with a `<roam uid="…"/>` tag that may carry `heading="N"`, `childrenViewType`, or `hiddenChildren="N"` (subtree cut off by maxDepth — read deeper to see it) — use the `uid` for follow-up ops, honor those attrs, and strip the whole tag before showing content to the user. `__text__` is italics (not bold). A `((uid))<ref>preview</ref>` is a block reference: when displaying, show the preview and drop the `((uid))` + tag; when writing back with update_block, pass only the content (not the leading `- `/indent or the `<roam>` tag) and keep `((uid))<ref>…</ref>` intact — the server reduces it to `((uid))`.';
+  '\n\nReturns Roam agent markdown (full syntax in this graph\'s guidelines `roamSyntax`). Each block ends with a `<roam uid="…"/>` tag that may carry `heading="N"`, `childrenViewType`, `hiddenChildren="N"` (subtree cut off by maxDepth — read deeper to see it), or `refs="N"` (N blocks reference it — get_backlinks with that uid reads them) — use the `uid` for follow-up ops, honor those attrs, and strip the whole tag before showing content to the user. `__text__` is italics (not bold). A `((uid))<ref>preview</ref>` is a block reference: when displaying, show the preview and drop the `((uid))` + tag; when writing back with update_block, pass only the content (not the leading `- `/indent or the `<roam>` tag) and keep `((uid))<ref>…</ref>` intact — the server reduces it to `((uid))`.';
 
 // Default MCP server `instructions` (orientation block). Shared by the stdio server
 // (packages/mcp) and the hosted server — the latter may override it per client
@@ -302,7 +306,7 @@ const EXTENSION: ToolAnnotations = {
 
 // ----------------------------------------------------------------------------
 // Output schemas (MCP tools/list structured-result hints) — WRITE TOOLS ONLY.
-// The 9 write tools declare a schema (and emit structuredContent); the 9 read
+// The 11 write tools declare a schema (and emit structuredContent); the 9 read
 // tools are content-only. Why write-only:
 //   - structuredContent duplicates the whole result into the text channel
 //     (textResult already JSON-stringifies it), so a schema on big reads
@@ -338,6 +342,31 @@ const UidOutput = z
 const UidsOutput = z
   .object({ uids: z.array(z.string()).optional(), graph: z.string().optional() })
   .passthrough();
+// batch writes: `results` is positionally aligned with the input; `note`/`deleted`/`reason` stay
+// server-owned and untyped like DeleteOutput's `deleted` (core interprets none of them)
+const BatchOutput = z
+  .object({
+    success: z.boolean().optional(),
+    succeeded: z.number().optional(),
+    failed: z.number().optional(),
+    graph: z.string().optional(),
+    results: z
+      .array(
+        z
+          .object({
+            uid: z.string().optional(),
+            ok: z.boolean().optional(),
+            code: z.string().optional(),
+            message: z.string().optional(),
+            note: z.unknown(),
+            deleted: z.unknown(),
+            reason: z.unknown(),
+          })
+          .passthrough(),
+      )
+      .optional(),
+  })
+  .passthrough();
 
 // Data Tools (require graph/client; reusable across local + hosted MCP transports)
 export const dataTools: ClientToolDefinition[] = [
@@ -363,7 +392,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "create_block",
-    "Create blocks from markdown content. Target by parentUid, pageTitle, or dailyNotePage (page created if needed). Use nestUnder to insert under a specific child block. Supports nested bulleted lists via markdown indentation." +
+    "Create blocks from markdown content. Target by parentUid, pageTitle, or dailyNotePage (page created if needed). Use nestUnder to insert under a specific child block. Supports nested bulleted lists via markdown indentation. `open: false` creates the new top-level blocks collapsed (folded)." +
       GUIDELINES_NOTE,
     CreateBlockSchema,
     createBlock,
@@ -371,7 +400,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "append_to_daily_note",
-    "Append (capture) markdown to a daily note — the tool for quick capture into Roam: todos, notes, meeting summaries, AI outputs. Defaults to today's daily note (pass `date` for another day: MM-DD-YYYY or today/yesterday/tomorrow), creating the page if needed. Optionally nestUnder an existing top-level section (e.g. 'TODOs'), matched by exact text and created if absent. Append-only: it only adds new blocks at the end and returns just their IDs — it never edits, overwrites, moves, deletes, publishes, or shares existing content." +
+    "Append (capture) markdown to a daily note — the tool for quick capture into Roam: todos, notes, meeting summaries, AI outputs. Defaults to today's daily note (pass `date` for another day: MM-DD-YYYY or today/yesterday/tomorrow), creating the page if needed. Optionally nestUnder an existing top-level section (e.g. 'TODOs'), matched by exact text and created if absent. Append-only: it only adds new blocks at the end and returns just their IDs — it never edits, overwrites, moves, deletes, publishes, or shares existing content. When the markdown has nested children, prefer `open: false` so the capture lands as one collapsed (folded) line in the daily note." +
       GUIDELINES_NOTE,
     AppendToDailyNoteSchema,
     appendToDailyNote,
@@ -386,12 +415,28 @@ export const dataTools: ClientToolDefinition[] = [
     { title: "Update block", annotations: EDIT, outputSchema: SuccessOutput },
   ),
   defineTool(
+    "update_blocks",
+    "Update up to 25 blocks in one round trip. Same per-item semantics as update_block: each item targets one block by `uid`, and `string` sets that block's literal text — NOT expanded into child blocks, and existing children are left untouched. List a block once; combine all its changes into one item. Items are applied together but reported separately: check `results` per item — some entries can fail while others succeed." +
+      GUIDELINES_NOTE,
+    UpdateBlocksSchema,
+    updateBlocks,
+    { title: "Update blocks", annotations: EDIT, outputSchema: BatchOutput },
+  ),
+  defineTool(
     "delete_block",
     'Delete a block and all its descendants — irreversible. If the block is referenced elsewhere, deletion REPLACES those ((uid)) refs with its text (graph surgery, not string removal — on approval you can instead delete the referencing blocks). Inspect with get_block first: its markdown flags referenced blocks with `refs="N"` (and `hiddenChildren="N"` for subtrees beyond maxDepth), and comments count as refs. If anything shows `refs`, or the subtree is large (~20+ blocks / 500+ words), check get_backlinks and confirm with the user before deleting. For cleanup, only delete blocks created this task or named by the user.' +
       GUIDELINES_NOTE,
     DeleteBlockSchema,
     deleteBlock,
     { title: "Delete block", annotations: DELETE, outputSchema: DeleteOutput },
+  ),
+  defineTool(
+    "delete_blocks",
+    'Delete up to 25 blocks and all their descendants in one round trip — irreversible. If a block is referenced elsewhere, deletion REPLACES those ((uid)) refs with its text (graph surgery, not string removal — on approval you can instead delete the referencing blocks). Inspect every uid with get_block first: its markdown flags referenced blocks with `refs="N"` (and `hiddenChildren="N"` for subtrees beyond maxDepth), and comments count as refs. If anything shows `refs`, or a subtree is large (~20+ blocks / 500+ words), check get_backlinks and confirm with the user before deleting. For cleanup, only delete blocks created this task or named by the user. Deleting an ancestor also deletes its descendants — a listed descendant reports `deleted with its ancestor`, not an error. Items are deleted together but reported separately: check `results` per item — some entries can fail while others succeed.' +
+      GUIDELINES_NOTE,
+    DeleteBlocksSchema,
+    deleteBlocks,
+    { title: "Delete blocks", annotations: DELETE, outputSchema: BatchOutput },
   ),
   defineTool(
     "move_block",
@@ -469,7 +514,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_page",
-    "Get a page's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large pages." +
+    "Get a page's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large pages. The result also carries `linkedReferences`: up to 5 recent references to this page." +
       READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     GetPageSchema,
@@ -478,7 +523,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_block",
-    "Get a block's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large blocks." +
+    "Get a block's content as markdown. Show content verbatim, never paraphrase. Use maxDepth for large blocks. The result also carries `linkedReferences`: up to 5 recent references to this block." +
       READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     GetBlockSchema,
@@ -487,7 +532,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "get_backlinks",
-    "Get paginated backlinks (linked references) for a page or block, formatted as markdown. Returns total count and results with optional breadcrumb paths." +
+    "Get paginated backlinks (linked references) for a page or block, formatted as markdown. Returns total count, `shown`, and results with optional breadcrumb paths; `nextOffset` is present when more exist." +
       READ_FORMAT_NOTE +
       GUIDELINES_NOTE,
     GetBacklinksSchema,
