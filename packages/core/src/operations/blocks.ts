@@ -48,7 +48,7 @@ export const CreateBlockSchema = z.object({
     .boolean()
     .optional()
     .describe(
-      "Collapse state of the top-level blocks created from `markdown` (the ones whose uids are returned). false = created collapsed: children hidden behind the caret until expanded. Nested children and the nestUnder section block are unaffected. Default true.",
+      "Collapse state of the top-level blocks created from `markdown` (the ones whose uids are returned). false = created collapsed (folded): children hidden behind the caret until expanded. Nested children and the nestUnder section block are unaffected. Default true.",
     ),
 });
 
@@ -74,7 +74,7 @@ export const AppendToDailyNoteSchema = z.object({
     .boolean()
     .optional()
     .describe(
-      "Collapse state of the top-level blocks created from `markdown` (the ones whose uids are returned). false = created collapsed: children hidden behind the caret until expanded. Nested children and the nestUnder section block are unaffected. Default true.",
+      "Collapse state of the top-level blocks created from `markdown` (the ones whose uids are returned). false = created collapsed (folded): children hidden behind the caret until expanded. Nested children and the nestUnder section block are unaffected. Default true.",
     ),
 });
 
@@ -95,7 +95,12 @@ const BlockUpdateFields = z.object({
     .describe(
       "New literal text for this block (the Roam block string, including inline markup like **bold**, [[links]], ((refs))). Set as-is — NOT parsed into nested child blocks. Updates this one block only.",
     ),
-  open: z.boolean().optional().describe("Collapse state"),
+  open: z
+    .boolean()
+    .optional()
+    .describe(
+      "Collapse state: false collapses (folds) the block — children hidden behind the caret — true expands it",
+    ),
   heading: z.coerce.number().optional().describe("Heading level (0-3)"),
   childrenViewType: z
     .enum(["bullet", "numbered", "document"])

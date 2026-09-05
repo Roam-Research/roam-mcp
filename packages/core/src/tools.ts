@@ -392,7 +392,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "create_block",
-    "Create blocks from markdown content. Target by parentUid, pageTitle, or dailyNotePage (page created if needed). Use nestUnder to insert under a specific child block. Supports nested bulleted lists via markdown indentation." +
+    "Create blocks from markdown content. Target by parentUid, pageTitle, or dailyNotePage (page created if needed). Use nestUnder to insert under a specific child block. Supports nested bulleted lists via markdown indentation. `open: false` creates the new top-level blocks collapsed (folded)." +
       GUIDELINES_NOTE,
     CreateBlockSchema,
     createBlock,
@@ -400,7 +400,7 @@ export const dataTools: ClientToolDefinition[] = [
   ),
   defineTool(
     "append_to_daily_note",
-    "Append (capture) markdown to a daily note — the tool for quick capture into Roam: todos, notes, meeting summaries, AI outputs. Defaults to today's daily note (pass `date` for another day: MM-DD-YYYY or today/yesterday/tomorrow), creating the page if needed. Optionally nestUnder an existing top-level section (e.g. 'TODOs'), matched by exact text and created if absent. Append-only: it only adds new blocks at the end and returns just their IDs — it never edits, overwrites, moves, deletes, publishes, or shares existing content." +
+    "Append (capture) markdown to a daily note — the tool for quick capture into Roam: todos, notes, meeting summaries, AI outputs. Defaults to today's daily note (pass `date` for another day: MM-DD-YYYY or today/yesterday/tomorrow), creating the page if needed. Optionally nestUnder an existing top-level section (e.g. 'TODOs'), matched by exact text and created if absent. Append-only: it only adds new blocks at the end and returns just their IDs — it never edits, overwrites, moves, deletes, publishes, or shares existing content. When the markdown has nested children, prefer `open: false` so the capture lands as one collapsed (folded) line in the daily note." +
       GUIDELINES_NOTE,
     AppendToDailyNoteSchema,
     appendToDailyNote,
